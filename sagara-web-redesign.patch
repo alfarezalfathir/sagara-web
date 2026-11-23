@@ -1,0 +1,3342 @@
+diff --git a/.env.example b/.env.example
+new file mode 100644
+index 0000000..d472a2e
+--- /dev/null
++++ b/.env.example
+@@ -0,0 +1,4 @@
++# Salin file ini menjadi .env.local lalu isi dengan nilai dari
++# Supabase: Project Settings > API.
++NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
++NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+diff --git a/.gitignore b/.gitignore
+index 5ef6a52..7b8da95 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -32,6 +32,7 @@ yarn-error.log*
+ 
+ # env files (can opt-in for committing if needed)
+ .env*
++!.env.example
+ 
+ # vercel
+ .vercel
+diff --git a/README.md b/README.md
+index e215bc4..fefcbd8 100644
+--- a/README.md
++++ b/README.md
+@@ -1,36 +1,75 @@
+-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
++# Sagara Itenas ROV Team
+ 
+-## Getting Started
++Website resmi tim ROV Institut Teknologi Nasional Bandung. Dibangun dengan Next.js, Tailwind CSS, Supabase, dan Three.js.
+ 
+-First, run the development server:
++## Menjalankan di lokal
+ 
+ ```bash
++npm install
++cp .env.example .env.local   # lalu isi URL dan anon key Supabase
+ npm run dev
+-# or
+-yarn dev
+-# or
+-pnpm dev
+-# or
+-bun dev
+ ```
+ 
+-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
++Buka [http://localhost:3000](http://localhost:3000).
+ 
+-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
++Perintah lain: `npm run lint` dan `npm run build`.
+ 
+-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
++> Proyek ini memakai versi Next.js dengan perubahan API. Sebelum mengubah konvensi routing atau caching,
++> baca panduan di `node_modules/next/dist/docs/` (lihat `AGENTS.md`). `next.config.ts` mengaktifkan
++> `cacheComponents`, jadi data Supabase diambil di komponen client lewat hook di `src/hooks/`.
+ 
+-## Learn More
++## Struktur folder
+ 
+-To learn more about Next.js, take a look at the following resources:
++```
++src/
++├─ app/
++│  ├─ (public)/        Halaman publik: home, about-us, rov, gallery, recruitment, contact
++│  └─ admin/
++│     ├─ login/        Halaman login admin
++│     └─ (dashboard)/  Dashboard (ringkasan, gallery, site-content), dijaga login
++├─ components/
++│  ├─ layout/          Navbar, Footer
++│  ├─ sections/        Bagian halaman (Hero, Highlights, GalleryGrid, StoryRow, ...)
++│  ├─ admin/           AdminShell, GalleryForm, HeroForm, Field
++│  ├─ three/           Viewer 3D ROV
++│  └─ ui/              Button, Container, SectionHeading, ImagePlaceholder
++├─ constants/          Info situs, menu navigasi, kategori galeri
++├─ hooks/              useGalleryPosts, useHeroContent
++├─ lib/                Client Supabase, query, helper
++└─ types/              Tipe data
++```
++
++Penamaan: komponen `PascalCase.tsx`, hook `useXxx.ts`, folder dan route `kebab-case`.
++
++## Setup Supabase
++
++**Tabel** yang dipakai:
+ 
+-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
++- `site_content`: `section_key`, `title`, `subtitle`, `description`, `image_url` (baris hero memakai `section_key = 'hero'`)
++- `gallery_posts`: `id`, `title`, `category`, `caption`, `image_url`, `event_date`, `created_at`
+ 
+-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
++**Storage**: buat bucket publik bernama `gallery` (atau ubah `STORAGE_BUCKET` di `src/constants/site.ts`).
++
++**Keamanan (RLS)**: anon key bersifat publik, jadi yang menentukan siapa boleh menulis adalah policy di database. Contoh policy:
++
++```sql
++-- Publik boleh membaca, hanya user login yang boleh mengubah
++alter table gallery_posts enable row level security;
++create policy "Publik membaca galeri" on gallery_posts for select using (true);
++create policy "Admin mengelola galeri" on gallery_posts for all to authenticated using (true) with check (true);
++
++alter table site_content enable row level security;
++create policy "Publik membaca konten" on site_content for select using (true);
++create policy "Admin mengelola konten" on site_content for all to authenticated using (true) with check (true);
++
++-- Storage bucket "gallery"
++create policy "Admin mengunggah foto" on storage.objects for insert to authenticated with check (bucket_id = 'gallery');
++create policy "Admin menghapus foto" on storage.objects for delete to authenticated using (bucket_id = 'gallery');
++```
+ 
+-## Deploy on Vercel
++Policy `authenticated` berlaku untuk semua akun yang terdaftar. Matikan pendaftaran publik di Supabase (Authentication > Sign In / Providers) dan buat akun admin secara manual.
+ 
+-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
++## Yang perlu diisi
+ 
+-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
++- `recruitmentFormUrl` di `src/constants/site.ts`: link Google Form open recruitment.
++- Teks dan foto placeholder di halaman About us (`src/app/(public)/about-us/page.tsx`).
+diff --git a/public/file.svg b/public/file.svg
+deleted file mode 100644
+index 004145c..0000000
+--- a/public/file.svg
++++ /dev/null
+@@ -1 +0,0 @@
+-<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
+\ No newline at end of file
+diff --git a/public/globe.svg b/public/globe.svg
+deleted file mode 100644
+index 567f17b..0000000
+--- a/public/globe.svg
++++ /dev/null
+@@ -1 +0,0 @@
+-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
+\ No newline at end of file
+diff --git a/public/next.svg b/public/next.svg
+deleted file mode 100644
+index 5174b28..0000000
+--- a/public/next.svg
++++ /dev/null
+@@ -1 +0,0 @@
+-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+\ No newline at end of file
+diff --git a/public/vercel.svg b/public/vercel.svg
+deleted file mode 100644
+index 7705396..0000000
+--- a/public/vercel.svg
++++ /dev/null
+@@ -1 +0,0 @@
+-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
+\ No newline at end of file
+diff --git a/public/window.svg b/public/window.svg
+deleted file mode 100644
+index b2b2a44..0000000
+--- a/public/window.svg
++++ /dev/null
+@@ -1 +0,0 @@
+-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
+\ No newline at end of file
+diff --git a/src/app/(public)/about-us/page.tsx b/src/app/(public)/about-us/page.tsx
+new file mode 100644
+index 0000000..07b4521
+--- /dev/null
++++ b/src/app/(public)/about-us/page.tsx
+@@ -0,0 +1,58 @@
++import type { Metadata } from 'next';
++import { PageHeader } from '@/components/sections/PageHeader';
++import { StoryRow } from '@/components/sections/StoryRow';
++import { Container } from '@/components/ui/Container';
++import { ButtonLink } from '@/components/ui/Button';
++
++export const metadata: Metadata = { title: 'About us' };
++
++// TODO: ganti teks dan foto placeholder di halaman ini dengan sejarah tim yang asli.
++export default function AboutUsPage() {
++  return (
++    <>
++      <PageHeader
++        title="About us"
++        description="Kami membangun wahana bawah air untuk kompetisi, riset, dan belajar."
++      />
++
++      <section className="bg-shallows py-20 sm:py-28">
++        <StoryRow
++          title="Siapa kami"
++          body="Sagara Itenas adalah tim riset dan pengembangan ROV di Institut Teknologi Nasional Bandung. Anggotanya mahasiswa lintas bidang yang merancang, merakit, dan menguji wahana bawah air bersama-sama."
++          imageLabel="Foto tim menyusul"
++        />
++      </section>
++
++      <section className="bg-midwater py-20 sm:py-28">
++        <StoryRow
++          reverse
++          title="Kontes Kapal Indonesia 2026"
++          body="Tahun ini perjalanan kami membawa Sagara ke Kontes Kapal Indonesia di Bengkalis, Riau. Rangkuman tiga harinya ada di galeri."
++          imageLabel="Foto KKI 2026 menyusul"
++        >
++          <ButtonLink href="/gallery" variant="ghost">
++            Lihat rangkuman KKI 2026
++          </ButtonLink>
++        </StoryRow>
++      </section>
++
++      <section className="bg-abyss py-24 sm:py-32">
++        <Container>
++          <p className="font-display text-6xl font-extrabold italic leading-[0.9] tracking-tight text-foam sm:text-8xl">
++            One Vision,
++            <br />
++            One Journey.
++          </p>
++        </Container>
++      </section>
++
++      <section className="bg-abyss pb-24 sm:pb-32">
++        <StoryRow
++          title="Tempat kami bekerja"
++          body="Ruang kerja tim tempat wahana dirakit dan diuji sebelum kompetisi."
++          imageLabel="Foto ruang kerja menyusul"
++        />
++      </section>
++    </>
++  );
++}
+diff --git a/src/app/(public)/contact/page.tsx b/src/app/(public)/contact/page.tsx
+new file mode 100644
+index 0000000..a412b22
+--- /dev/null
++++ b/src/app/(public)/contact/page.tsx
+@@ -0,0 +1,57 @@
++import type { Metadata } from 'next';
++import { PageHeader } from '@/components/sections/PageHeader';
++import { Container } from '@/components/ui/Container';
++import { SITE } from '@/constants/site';
++
++export const metadata: Metadata = { title: 'Contact' };
++
++const CONTACTS = [
++  {
++    label: 'Email',
++    text: SITE.email,
++    href: `mailto:${SITE.email}`,
++  },
++  {
++    label: 'Instagram',
++    text: `@${SITE.instagram.handle}`,
++    href: SITE.instagram.url,
++  },
++  {
++    label: 'TikTok',
++    text: `@${SITE.tiktok.handle}`,
++    href: SITE.tiktok.url,
++  },
++];
++
++export default function ContactPage() {
++  return (
++    <>
++      <PageHeader
++        title="Contact"
++        description="Hubungi kami untuk kolaborasi, sponsor, atau pertanyaan seputar tim."
++      />
++
++      <section className="bg-shallows py-20 sm:py-28">
++        <Container>
++          <dl className="divide-y divide-line border-y border-line">
++            {CONTACTS.map((contact) => (
++              <div key={contact.label} className="grid gap-2 py-8 md:grid-cols-12 md:items-baseline md:gap-8">
++                <dt className="text-mist md:col-span-3">{contact.label}</dt>
++                <dd className="md:col-span-9">
++                  <a
++                    href={contact.href}
++                    target={contact.href.startsWith('http') ? '_blank' : undefined}
++                    rel={contact.href.startsWith('http') ? 'noopener noreferrer' : undefined}
++                    className="font-display text-3xl font-bold italic text-foam transition-colors hover:text-flare sm:text-5xl"
++                  >
++                    {contact.text}
++                  </a>
++                </dd>
++              </div>
++            ))}
++          </dl>
++        </Container>
++      </section>
++    </>
++  );
++}
+diff --git a/src/app/(public)/gallery/page.tsx b/src/app/(public)/gallery/page.tsx
+new file mode 100644
+index 0000000..b36dbc1
+--- /dev/null
++++ b/src/app/(public)/gallery/page.tsx
+@@ -0,0 +1,23 @@
++import type { Metadata } from 'next';
++import { PageHeader } from '@/components/sections/PageHeader';
++import { GalleryBrowser } from '@/components/sections/GalleryBrowser';
++import { Container } from '@/components/ui/Container';
++
++export const metadata: Metadata = { title: 'Gallery' };
++
++export default function GalleryPage() {
++  return (
++    <>
++      <PageHeader
++        title="Gallery"
++        description="Dokumentasi kompetisi, progres ROV, dan kegiatan tim."
++      />
++
++      <section className="bg-midwater py-16 sm:py-20">
++        <Container>
++          <GalleryBrowser />
++        </Container>
++      </section>
++    </>
++  );
++}
+diff --git a/src/app/(public)/layout.tsx b/src/app/(public)/layout.tsx
+new file mode 100644
+index 0000000..622e23b
+--- /dev/null
++++ b/src/app/(public)/layout.tsx
+@@ -0,0 +1,13 @@
++import type { ReactNode } from 'react';
++import { Navbar } from '@/components/layout/Navbar';
++import { Footer } from '@/components/layout/Footer';
++
++export default function PublicLayout({ children }: { children: ReactNode }) {
++  return (
++    <>
++      <Navbar />
++      <main className="flex-1">{children}</main>
++      <Footer />
++    </>
++  );
++}
+diff --git a/src/app/(public)/page.tsx b/src/app/(public)/page.tsx
+new file mode 100644
+index 0000000..d2df749
+--- /dev/null
++++ b/src/app/(public)/page.tsx
+@@ -0,0 +1,15 @@
++import { Hero } from '@/components/sections/Hero';
++import { Highlights } from '@/components/sections/Highlights';
++import { RecentGallery } from '@/components/sections/RecentGallery';
++import { RecruitmentBanner } from '@/components/sections/RecruitmentBanner';
++
++export default function HomePage() {
++  return (
++    <>
++      <Hero />
++      <Highlights />
++      <RecentGallery />
++      <RecruitmentBanner />
++    </>
++  );
++}
+diff --git a/src/app/(public)/recruitment/page.tsx b/src/app/(public)/recruitment/page.tsx
+new file mode 100644
+index 0000000..baa3625
+--- /dev/null
++++ b/src/app/(public)/recruitment/page.tsx
+@@ -0,0 +1,57 @@
++import type { Metadata } from 'next';
++import { PageHeader } from '@/components/sections/PageHeader';
++import { SectionHeading } from '@/components/ui/SectionHeading';
++import { Container } from '@/components/ui/Container';
++import { ButtonLink } from '@/components/ui/Button';
++import { SITE } from '@/constants/site';
++
++export const metadata: Metadata = { title: 'Recruitment' };
++
++const TRAITS = [
++  {
++    title: 'Rasa ingin tahu',
++    body: 'Ingin tahu cara kerja wahana bawah air dan mau mencoba hal baru.',
++  },
++  {
++    title: 'Mau belajar',
++    body: 'Tidak perlu sudah ahli. Kami belajar dan berkembang bersama.',
++  },
++  {
++    title: 'Komitmen pada tim',
++    body: 'Siap meluangkan waktu untuk tim dan target kompetisi.',
++  },
++];
++
++export default function RecruitmentPage() {
++  const hasForm = SITE.recruitmentFormUrl !== '';
++  const ctaHref = hasForm ? SITE.recruitmentFormUrl : SITE.instagram.url;
++  const ctaLabel = hasForm ? 'Daftar sekarang' : 'Lihat info di Instagram';
++
++  return (
++    <>
++      <PageHeader
++        title="Open recruitment"
++        description="Sagara ITENAS mengajak mahasiswa Itenas angkatan 2024 dan 2025 untuk bergabung."
++      />
++
++      <section className="bg-shallows py-20 sm:py-28">
++        <Container>
++          <SectionHeading title="Yang kami cari" />
++          <dl className="mt-12 divide-y divide-line border-y border-line">
++            {TRAITS.map((trait) => (
++              <div key={trait.title} className="grid gap-3 py-8 md:grid-cols-12 md:gap-8">
++                <dt className="font-display text-3xl font-bold italic text-foam md:col-span-5">
++                  {trait.title}
++                </dt>
++                <dd className="leading-relaxed text-mist md:col-span-7">{trait.body}</dd>
++              </div>
++            ))}
++          </dl>
++          <div className="mt-12">
++            <ButtonLink href={ctaHref}>{ctaLabel}</ButtonLink>
++          </div>
++        </Container>
++      </section>
++    </>
++  );
++}
+diff --git a/src/app/(public)/rov/page.tsx b/src/app/(public)/rov/page.tsx
+new file mode 100644
+index 0000000..228bfb1
+--- /dev/null
++++ b/src/app/(public)/rov/page.tsx
+@@ -0,0 +1,29 @@
++import type { Metadata } from 'next';
++import { PageHeader } from '@/components/sections/PageHeader';
++import { Container } from '@/components/ui/Container';
++import { ButtonLink } from '@/components/ui/Button';
++import { RovViewer } from '@/components/three/RovViewer';
++
++export const metadata: Metadata = { title: 'ROV' };
++
++export default function RovPage() {
++  return (
++    <>
++      <PageHeader
++        title="ROV"
++        description="Putar dan perbesar model wahana kami, lalu pilih satu bagian untuk melihat fungsinya."
++      />
++
++      <section className="bg-shallows py-16 sm:py-20">
++        <Container>
++          <RovViewer heightClass="h-[420px] sm:h-[560px]" />
++          <div className="mt-10">
++            <ButtonLink href="/gallery" variant="ghost">
++              Lihat progres ROV
++            </ButtonLink>
++          </div>
++        </Container>
++      </section>
++    </>
++  );
++}
+diff --git a/src/app/admin/(dashboard)/gallery/page.tsx b/src/app/admin/(dashboard)/gallery/page.tsx
+new file mode 100644
+index 0000000..70f36b6
+--- /dev/null
++++ b/src/app/admin/(dashboard)/gallery/page.tsx
+@@ -0,0 +1,109 @@
++'use client';
++
++import { useState } from 'react';
++import { deleteGalleryPost } from '@/lib/supabase/queries';
++import { getErrorMessage } from '@/lib/errors';
++import { formatDate } from '@/lib/format-date';
++import { useGalleryPosts } from '@/hooks/useGalleryPosts';
++import { Button } from '@/components/ui/Button';
++import { GalleryForm } from '@/components/admin/GalleryForm';
++import type { GalleryPost } from '@/types/gallery';
++
++export default function AdminGalleryPage() {
++  const { posts, loading, reload } = useGalleryPosts();
++  const [editing, setEditing] = useState<GalleryPost | null>(null);
++  const [formKey, setFormKey] = useState(0);
++  const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
++
++  function handleSaved() {
++    setEditing(null);
++    setFormKey((key) => key + 1);
++    setMessage({ type: 'ok', text: 'Foto tersimpan.' });
++    reload();
++  }
++
++  async function handleDelete(post: GalleryPost) {
++    if (!window.confirm(`Hapus "${post.title}"? Foto akan hilang dari galeri.`)) return;
++
++    try {
++      await deleteGalleryPost(post.id);
++      if (editing?.id === post.id) setEditing(null);
++      setMessage({ type: 'ok', text: 'Foto dihapus.' });
++      reload();
++    } catch (err) {
++      setMessage({
++        type: 'error',
++        text: `Foto belum terhapus. Detail: ${getErrorMessage(err, 'tidak diketahui')}`,
++      });
++    }
++  }
++
++  return (
++    <div>
++      <h1 className="font-display text-5xl font-extrabold italic leading-none text-foam">
++        Galeri
++      </h1>
++
++      {message && (
++        <p
++          role={message.type === 'error' ? 'alert' : 'status'}
++          className={`mt-6 text-sm ${message.type === 'error' ? 'text-flare' : 'text-foam'}`}
++        >
++          {message.text}
++        </p>
++      )}
++
++      <div className="mt-10 grid gap-12 lg:grid-cols-12">
++        <section className="lg:col-span-5">
++          <h2 className="mb-5 text-lg font-semibold text-foam">
++            {editing ? 'Edit foto' : 'Tambah foto'}
++          </h2>
++          <GalleryForm
++            key={editing?.id ?? `new-${formKey}`}
++            initial={editing}
++            onSaved={handleSaved}
++            onCancel={editing ? () => setEditing(null) : undefined}
++          />
++        </section>
++
++        <section className="lg:col-span-7">
++          <h2 className="mb-5 text-lg font-semibold text-foam">Semua foto</h2>
++
++          {loading ? (
++            <p className="text-mist">Memuat galeri…</p>
++          ) : posts.length === 0 ? (
++            <p className="text-mist">Belum ada foto. Tambahkan foto pertama lewat form.</p>
++          ) : (
++            <ul className="divide-y divide-line border-y border-line">
++              {posts.map((post) => (
++                <li key={post.id} className="flex items-center gap-4 py-4">
++                  {/* eslint-disable-next-line @next/next/no-img-element */}
++                  <img
++                    src={post.image_url}
++                    alt=""
++                    className="h-16 w-16 shrink-0 rounded-md border border-line object-cover"
++                  />
++                  <div className="min-w-0 flex-1">
++                    <p className="truncate font-medium text-foam">{post.title}</p>
++                    <p className="text-xs text-mist">
++                      {post.category}
++                      {post.event_date ? `, ${formatDate(post.event_date)}` : ''}
++                    </p>
++                  </div>
++                  <div className="flex shrink-0 gap-2">
++                    <Button variant="ghost" size="sm" onClick={() => setEditing(post)}>
++                      Edit
++                    </Button>
++                    <Button variant="ghost" size="sm" onClick={() => handleDelete(post)}>
++                      Hapus
++                    </Button>
++                  </div>
++                </li>
++              ))}
++            </ul>
++          )}
++        </section>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/app/admin/(dashboard)/layout.tsx b/src/app/admin/(dashboard)/layout.tsx
+new file mode 100644
+index 0000000..6a08567
+--- /dev/null
++++ b/src/app/admin/(dashboard)/layout.tsx
+@@ -0,0 +1,6 @@
++import type { ReactNode } from 'react';
++import { AdminShell } from '@/components/admin/AdminShell';
++
++export default function DashboardLayout({ children }: { children: ReactNode }) {
++  return <AdminShell>{children}</AdminShell>;
++}
+diff --git a/src/app/admin/(dashboard)/page.tsx b/src/app/admin/(dashboard)/page.tsx
+new file mode 100644
+index 0000000..4c8c9c6
+--- /dev/null
++++ b/src/app/admin/(dashboard)/page.tsx
+@@ -0,0 +1,48 @@
++'use client';
++
++import { GALLERY_CATEGORIES } from '@/constants/categories';
++import { useGalleryPosts } from '@/hooks/useGalleryPosts';
++import { useHeroContent } from '@/hooks/useHeroContent';
++import { ButtonLink } from '@/components/ui/Button';
++
++export default function AdminOverviewPage() {
++  const { posts, loading } = useGalleryPosts();
++  const { hero } = useHeroContent();
++
++  return (
++    <div className="max-w-3xl">
++      <h1 className="font-display text-5xl font-extrabold italic leading-none text-foam">
++        Ringkasan
++      </h1>
++
++      <section className="mt-10">
++        <h2 className="text-sm font-semibold text-foam">Foto di galeri</h2>
++        <p className="mt-2 font-display text-6xl font-extrabold italic text-foam">
++          {loading ? '…' : posts.length}
++        </p>
++        <dl className="mt-6 divide-y divide-line border-y border-line">
++          {GALLERY_CATEGORIES.map((category) => (
++            <div key={category} className="flex justify-between py-3 text-sm">
++              <dt className="text-mist">{category}</dt>
++              <dd className="font-semibold text-foam">
++                {loading ? '…' : posts.filter((post) => post.category === category).length}
++              </dd>
++            </div>
++          ))}
++        </dl>
++      </section>
++
++      <section className="mt-10">
++        <h2 className="text-sm font-semibold text-foam">Judul hero saat ini</h2>
++        <p className="mt-2 text-mist">{hero.title}</p>
++      </section>
++
++      <div className="mt-10 flex flex-wrap gap-3">
++        <ButtonLink href="/admin/gallery">Tambah foto</ButtonLink>
++        <ButtonLink href="/admin/site-content" variant="ghost">
++          Edit konten situs
++        </ButtonLink>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/app/admin/(dashboard)/site-content/page.tsx b/src/app/admin/(dashboard)/site-content/page.tsx
+new file mode 100644
+index 0000000..d7f3fc8
+--- /dev/null
++++ b/src/app/admin/(dashboard)/site-content/page.tsx
+@@ -0,0 +1,23 @@
++'use client';
++
++import { useHeroContent } from '@/hooks/useHeroContent';
++import { HeroForm } from '@/components/admin/HeroForm';
++
++export default function AdminSiteContentPage() {
++  const { hero, loading } = useHeroContent();
++
++  return (
++    <div>
++      <h1 className="font-display text-5xl font-extrabold italic leading-none text-foam">
++        Konten situs
++      </h1>
++      <p className="mt-3 max-w-xl text-mist">
++        Ubah teks dan foto hero di halaman utama. Perubahan langsung tampil di situs setelah disimpan.
++      </p>
++
++      <div className="mt-10">
++        {loading ? <p className="text-mist">Memuat konten…</p> : <HeroForm initial={hero} />}
++      </div>
++    </div>
++  );
++}
+diff --git a/src/app/admin/layout.tsx b/src/app/admin/layout.tsx
+new file mode 100644
+index 0000000..7bf771b
+--- /dev/null
++++ b/src/app/admin/layout.tsx
+@@ -0,0 +1,11 @@
++import type { Metadata } from 'next';
++import type { ReactNode } from 'react';
++
++export const metadata: Metadata = {
++  title: 'Admin',
++  robots: { index: false, follow: false },
++};
++
++export default function AdminRootLayout({ children }: { children: ReactNode }) {
++  return <>{children}</>;
++}
+diff --git a/src/app/admin/login/page.tsx b/src/app/admin/login/page.tsx
+index 358a293..91fa17d 100644
+--- a/src/app/admin/login/page.tsx
++++ b/src/app/admin/login/page.tsx
+@@ -1,107 +1,94 @@
+ 'use client';
+ 
+-import { useState } from 'react';
++import { useEffect, useState, type FormEvent } from 'react';
+ import { useRouter } from 'next/navigation';
+-import { supabase } from '@/lib/supabase';
+-import { Lock, Mail, Loader2 } from 'lucide-react';
++import { supabase } from '@/lib/supabase/client';
++import { Button } from '@/components/ui/Button';
++import { Field, inputClass } from '@/components/admin/Field';
+ 
+ export default function AdminLoginPage() {
+   const router = useRouter();
+   const [email, setEmail] = useState('');
+   const [password, setPassword] = useState('');
+   const [loading, setLoading] = useState(false);
+-  const [errorMsg, setErrorMsg] = useState('');
++  const [error, setError] = useState('');
+ 
+-  const handleLogin = async (e: React.FormEvent) => {
+-    e.preventDefault();
++  // Kalau sudah login, langsung ke dashboard.
++  useEffect(() => {
++    let active = true;
++    supabase.auth.getSession().then(({ data }) => {
++      if (active && data.session) router.replace('/admin');
++    });
++    return () => {
++      active = false;
++    };
++  }, [router]);
++
++  async function handleSubmit(event: FormEvent) {
++    event.preventDefault();
+     setLoading(true);
+-    setErrorMsg('');
++    setError('');
+ 
+-    const { error } = await supabase.auth.signInWithPassword({
++    const { error: signInError } = await supabase.auth.signInWithPassword({
+       email,
+       password,
+     });
+ 
+-    if (error) {
+-      setErrorMsg('Login gagal. Cek kembali email dan password admin.');
++    if (signInError) {
++      setError('Email atau password salah. Periksa lagi, lalu coba masuk kembali.');
+       setLoading(false);
+       return;
+     }
+ 
+-    router.push('/admin');
+-    router.refresh();
+-  };
++    router.replace('/admin');
++  }
+ 
+   return (
+-    <div className="min-h-screen bg-[#06131F] text-white flex items-center justify-center px-4">
+-      <div className="w-full max-w-md rounded-2xl border border-cyan-400/20 bg-[#0B2239]/80 backdrop-blur-md p-8 shadow-2xl">
+-        <div className="mb-6 text-center">
+-          <span className="inline-block rounded-full bg-[#FF5A1F]/15 px-3 py-1 text-xs font-semibold tracking-wider text-[#FF5A1F] border border-[#FF5A1F]/30 mb-3">
+-            SAGARA ITENAS • ADMIN PORTAL
+-          </span>
+-          <h1 className="text-2xl font-extrabold tracking-tight">Admin Sign In</h1>
+-          <p className="text-sm text-slate-300 mt-1">
+-            Kelola foto galeri, wahana ROV, dan konten website secara dinamis.
+-          </p>
+-        </div>
+-
+-        {errorMsg && (
+-          <div className="mb-4 rounded-lg bg-red-500/15 border border-red-500/40 px-4 py-2.5 text-sm text-red-200">
+-            {errorMsg}
+-          </div>
+-        )}
++    <div className="flex min-h-screen items-center justify-center bg-abyss px-5">
++      <div className="w-full max-w-sm">
++        <p className="font-display text-5xl font-extrabold italic leading-none text-foam">
++          Sagara
++        </p>
++        <h1 className="mt-6 text-xl font-semibold text-foam">Masuk ke dashboard admin</h1>
++        <p className="mt-2 text-sm text-mist">
++          Kelola foto galeri dan konten situs.
++        </p>
+ 
+-        <form onSubmit={handleLogin} className="space-y-4">
+-          <div>
+-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
+-              Email Admin
+-            </label>
+-            <div className="relative">
+-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+-              <input
+-                type="email"
+-                required
+-                value={email}
+-                onChange={(e) => setEmail(e.target.value)}
+-                placeholder="admin@sagaraitenas.com"
+-                className="w-full rounded-xl bg-[#06131F] border border-slate-700 pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#FF5A1F]"
+-              />
+-            </div>
+-          </div>
++        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
++          <Field label="Email" htmlFor="login-email">
++            <input
++              id="login-email"
++              type="email"
++              required
++              autoComplete="email"
++              value={email}
++              onChange={(e) => setEmail(e.target.value)}
++              className={inputClass}
++            />
++          </Field>
++          <Field label="Password" htmlFor="login-password">
++            <input
++              id="login-password"
++              type="password"
++              required
++              autoComplete="current-password"
++              value={password}
++              onChange={(e) => setPassword(e.target.value)}
++              className={inputClass}
++            />
++          </Field>
+ 
+-          <div>
+-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
+-              Password
+-            </label>
+-            <div className="relative">
+-              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+-              <input
+-                type="password"
+-                required
+-                value={password}
+-                onChange={(e) => setPassword(e.target.value)}
+-                placeholder="••••••••"
+-                className="w-full rounded-xl bg-[#06131F] border border-slate-700 pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#FF5A1F]"
+-              />
+-            </div>
+-          </div>
++          {error && (
++            <p role="alert" className="text-sm text-flare">
++              {error}
++            </p>
++          )}
+ 
+-          <button
+-            type="submit"
+-            disabled={loading}
+-            className="w-full mt-2 rounded-xl bg-[#FF5A1F] hover:bg-[#e44b14] disabled:opacity-60 text-white font-semibold py-2.5 text-sm transition flex items-center justify-center gap-2 cursor-pointer"
+-          >
+-            {loading ? (
+-              <>
+-                <Loader2 className="w-4 h-4 animate-spin" />
+-                Memproses...
+-              </>
+-            ) : (
+-              'Masuk ke Dashboard'
+-            )}
+-          </button>
++          <Button type="submit" disabled={loading} className="w-full">
++            {loading ? 'Memproses…' : 'Masuk'}
++          </Button>
+         </form>
+       </div>
+     </div>
+   );
+-}
+\ No newline at end of file
++}
+diff --git a/src/app/admin/page.tsx b/src/app/admin/page.tsx
+deleted file mode 100644
+index 695c62f..0000000
+--- a/src/app/admin/page.tsx
++++ /dev/null
+@@ -1,378 +0,0 @@
+-'use client';
+-
+-import { useEffect, useState } from 'react';
+-import Link from 'next/link';
+-import { motion } from 'framer-motion';
+-import { supabase } from '@/lib/supabase';
+-import {
+-  Anchor,
+-  Compass,
+-  Waves,
+-  ArrowDownRight,
+-  ShieldCheck,
+-  Sparkles,
+-} from 'lucide-react';
+-
+-import dynamic from 'next/dynamic';
+-const RovViewer3D = dynamic(() => import('@/components/RovViewer3D'), {
+-  ssr: false,
+-  loading: () => (
+-    <div className="h-64 rounded-2xl border border-cyan-400/20 bg-[#06131F]/80 flex items-center justify-center text-xs text-slate-400">
+-      Memuatkan 3D ROV...
+-    </div>
+-  ),
+-});
+-
+-interface HeroContent {
+-  title: string;
+-  subtitle: string | null;
+-  description: string | null;
+-  image_url: string | null;
+-}
+-
+-interface GalleryItem {
+-  id: string;
+-  title: string;
+-  category: string;
+-  caption: string | null;
+-  image_url: string;
+-  event_date: string;
+-}
+-
+-const CATEGORIES = [
+-  'Semua',
+-  'KKI 2026',
+-  'Progres ROV',
+-  'Open Recruitment',
+-  'Kegiatan Tim',
+-];
+-
+-export default function HomePage() {
+-  const [hero, setHero] = useState<HeroContent>({
+-    title: 'EXPLORE DEEPER.',
+-    subtitle: 'SAGARA ITENAS ROV TEAM',
+-    description:
+-      'Tim riset dan pengembangan wahana bawah air (Remotely Operated Vehicle) Institut Teknologi Nasional Bandung.',
+-    image_url: null,
+-  });
+-  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+-  const [selectedCategory, setSelectedCategory] = useState('Semua');
+-  const [depthMeters, setDepthMeters] = useState(0);
+-
+-  useEffect(() => {
+-    const fetchPublicData = async () => {
+-      const { data: heroData } = await supabase
+-        .from('site_content')
+-        .select('title, subtitle, description, image_url')
+-        .eq('section_key', 'hero')
+-        .single();
+-
+-      if (heroData) {
+-        setHero(heroData);
+-      }
+-
+-      const { data: galleryData } = await supabase
+-        .from('gallery_posts')
+-        .select('*')
+-        .order('created_at', { ascending: false });
+-
+-      if (galleryData) {
+-        setGallery(galleryData);
+-      }
+-    };
+-
+-    fetchPublicData();
+-  }, []);
+-
+-  useEffect(() => {
+-    const handleScroll = () => {
+-      const scrollTop = window.scrollY;
+-      const docHeight =
+-        document.documentElement.scrollHeight - window.innerHeight;
+-      if (docHeight <= 0) {
+-        setDepthMeters(0);
+-        return;
+-      }
+-      const progress = Math.min(Math.max(scrollTop / docHeight, 0), 1);
+-      setDepthMeters(Math.round(progress * 100));
+-    };
+-
+-    window.addEventListener('scroll', handleScroll, { passive: true });
+-    handleScroll();
+-    return () => window.removeEventListener('scroll', handleScroll);
+-  }, []);
+-
+-  const filteredGallery =
+-    selectedCategory === 'Semua'
+-      ? gallery
+-      : gallery.filter((item) => item.category === selectedCategory);
+-
+-  return (
+-    <div className="min-h-screen bg-gradient-to-b from-[#06131F] via-[#091D31] to-[#040C14] text-slate-100 relative overflow-x-clip">
+-      {/* Ambient Deep-Sea Glow */}
+-      <div className="pointer-events-none fixed inset-0 z-0">
+-        <div className="absolute -top-32 left-1/4 h-96 w-96 rounded-full bg-cyan-500/10 blur-[130px]" />
+-        <div className="absolute top-1/2 right-10 h-80 w-80 rounded-full bg-[#FF5A1F]/10 blur-[140px]" />
+-      </div>
+-
+-      {/* Depth Meter Indicator (Fixed Right) */}
+-      <aside
+-        aria-label="Depth Meter"
+-        className="hidden md:flex fixed right-5 top-1/2 -translate-y-1/2 z-30 flex-col items-center gap-2 rounded-2xl border border-cyan-400/20 bg-[#06131F]/80 backdrop-blur-md px-3 py-4 text-xs"
+-      >
+-        <Waves className="w-4 h-4 text-cyan-300" />
+-        <span className="text-[10px] uppercase tracking-widest text-slate-400">
+-          Depth
+-        </span>
+-        <span className="font-mono font-bold text-[#FF5A1F] text-sm">
+-          {depthMeters}m
+-        </span>
+-        <div className="w-1.5 h-24 rounded-full bg-slate-800 overflow-hidden relative mt-1">
+-          <div
+-            className="w-full bg-gradient-to-b from-cyan-400 to-[#FF5A1F] transition-all duration-150"
+-            style={{ height: `${Math.max(depthMeters, 8)}%` }}
+-          />
+-        </div>
+-      </aside>
+-
+-      {/* Navbar */}
+-      <header className="sticky top-0 z-30 border-b border-cyan-400/15 bg-[#06131F]/75 backdrop-blur-md">
+-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+-          <Link href="/" className="flex items-center gap-2.5 font-extrabold tracking-wide">
+-            <span className="w-8 h-8 rounded-lg bg-[#FF5A1F] flex items-center justify-center text-white shadow-lg shadow-[#FF5A1F]/25">
+-              <Anchor className="w-4 h-4" />
+-            </span>
+-            <div>
+-              <span className="text-sm block leading-none text-white">SAGARA</span>
+-              <span className="text-[10px] tracking-widest text-cyan-300/80">
+-                ITENAS ROV TEAM
+-              </span>
+-            </div>
+-          </Link>
+-
+-          <nav className="hidden sm:flex items-center gap-6 text-xs font-semibold text-slate-300">
+-            <a href="#about" className="hover:text-[#FF5A1F] transition">
+-              Tentang Tim
+-            </a>
+-            <a href="#rov-3d" className="hover:text-[#FF5A1F] transition">
+-              3D ROV
+-            </a>
+-            <a href="#gallery" className="hover:text-[#FF5A1F] transition">
+-              Galeri & Recap
+-            </a>
+-          </nav>
+-
+-          <Link
+-            href="/admin"
+-            className="rounded-xl border border-cyan-400/25 bg-[#0B2239]/80 hover:border-[#FF5A1F] px-3.5 py-2 text-xs font-semibold text-slate-200 transition"
+-          >
+-            Admin Portal
+-          </Link>
+-        </div>
+-      </header>
+-
+-      <main className="relative z-10">
+-        {/* Hero Section */}
+-        <section className="max-w-6xl mx-auto px-4 pt-16 pb-20 md:pt-24 md:pb-28">
+-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+-            <motion.div
+-              initial={{ opacity: 0, y: 18 }}
+-              animate={{ opacity: 1, y: 0 }}
+-              transition={{ duration: 0.5 }}
+-              className="lg:col-span-7 space-y-5"
+-            >
+-              <div className="inline-flex items-center gap-2 rounded-full border border-[#FF5A1F]/35 bg-[#FF5A1F]/15 px-3.5 py-1 text-xs font-bold tracking-wider text-[#FF5A1F]">
+-                <Compass className="w-3.5 h-3.5" />
+-                {hero.subtitle || 'SAGARA ITENAS ROV TEAM'}
+-              </div>
+-
+-              <h1 className="text-4xl sm:text-6xl font-black italic tracking-tight text-white leading-[1.03]">
+-                {hero.title}
+-              </h1>
+-
+-              <p className="text-sm sm:text-base text-slate-300 max-w-xl leading-relaxed">
+-                {hero.description}
+-              </p>
+-
+-              <div className="flex flex-wrap items-center gap-3.5 pt-2">
+-                <a
+-                  href="#gallery"
+-                  className="inline-flex items-center gap-2 rounded-xl bg-[#FF5A1F] hover:bg-[#e44b14] text-white font-bold text-xs sm:text-sm px-5 py-3 shadow-lg shadow-[#FF5A1F]/25 transition"
+-                >
+-                  Lihat Dokumentasi
+-                  <ArrowDownRight className="w-4 h-4" />
+-                </a>
+-                <a
+-                  href="#rov-3d"
+-                  className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/25 bg-[#0B2239]/70 hover:bg-[#0B2239] text-cyan-100 font-semibold text-xs sm:text-sm px-5 py-3 backdrop-blur-sm transition"
+-                >
+-                  Eksplorasi Wahana 3D
+-                </a>
+-              </div>
+-            </motion.div>
+-
+-            {/* Slot Preview / 3D ROV Card */}
+-            <motion.div
+-              initial={{ opacity: 0, scale: 0.96 }}
+-              animate={{ opacity: 1, scale: 1 }}
+-              transition={{ duration: 0.6, delay: 0.1 }}
+-              id="rov-3d"
+-              className="lg:col-span-5"
+-            >
+-              <div className="rounded-3xl border border-cyan-400/20 bg-[#0B2239]/65 backdrop-blur-md p-6 shadow-2xl relative overflow-hidden">
+-                <div className="flex items-center justify-between text-xs mb-4">
+-                  <span className="font-mono text-cyan-300">
+-                    UNIT // UNDERWATER ROV
+-                  </span>
+-                  <span className="rounded-full bg-[#FF5A1F]/20 text-[#FF5A1F] border border-[#FF5A1F]/30 px-2.5 py-0.5 text-[10px] font-bold">
+-                    3D READY SLOT
+-                  </span>
+-                </div>
+-
+-                <div className="h-64 rounded-2xl border border-dashed border-cyan-400/25 bg-[#06131F]/80 flex flex-col items-center justify-center text-center p-6">
+-                  <Sparkles className="w-8 h-8 text-[#FF5A1F] mb-2" />
+-                  <p className="text-sm font-bold text-white">
+-                    Interactive 3D ROV Canvas
+-                  </p>
+-                  <p className="text-xs text-slate-400 mt-1 max-w-xs">
+-                    Siap dihubungkan dengan model <code className="text-cyan-300">.glb</code> wahana kapal selam ROV Sagara pada tahap 3D.
+-                  </p>
+-                </div>
+-
+-                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+-                  <div className="rounded-xl bg-[#06131F]/70 border border-slate-800 p-2.5">
+-                    <div className="text-xs font-extrabold text-white">ROV</div>
+-                    <div className="text-[10px] text-slate-400">Wahana Utama</div>
+-                  </div>
+-                  <div className="rounded-xl bg-[#06131F]/70 border border-slate-800 p-2.5">
+-                    <div className="text-xs font-extrabold text-[#FF5A1F]">KKI</div>
+-                    <div className="text-[10px] text-slate-400">Kompetisi</div>
+-                  </div>
+-                  <div className="rounded-xl bg-[#06131F]/70 border border-slate-800 p-2.5">
+-                    <div className="text-xs font-extrabold text-cyan-300">ITENAS</div>
+-                    <div className="text-[10px] text-slate-400">Bandung</div>
+-                  </div>
+-                </div>
+-              </div>
+-            </motion.div>
+-          </div>
+-        </section>
+-
+-        {/* About Strip */}
+-        <section
+-          id="about"
+-          className="border-y border-cyan-400/15 bg-[#0B2239]/40 backdrop-blur-sm py-12"
+-        >
+-          <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+-            <div className="rounded-2xl border border-cyan-400/15 bg-[#06131F]/65 p-5">
+-              <ShieldCheck className="w-5 h-5 text-[#FF5A1F] mb-2.5" />
+-              <h2 className="text-sm font-bold text-white">Riset & Rekayasa Wahana</h2>
+-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+-                Pengembangan sistem mekanik, elektrik, kontrol, dan navigasi wahana bawah air secara terintegrasi.
+-              </p>
+-            </div>
+-            <div className="rounded-2xl border border-cyan-400/15 bg-[#06131F]/65 p-5">
+-              <Waves className="w-5 h-5 text-cyan-300 mb-2.5" />
+-              <h2 className="text-sm font-bold text-white">Kesiapan Kompetisi</h2>
+-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+-                Pengujian performa, manuver, dan misi wahana untuk ajang kompetisi nasional seperti Kontes Kapal Indonesia.
+-              </p>
+-            </div>
+-            <div className="rounded-2xl border border-cyan-400/15 bg-[#06131F]/65 p-5">
+-              <Anchor className="w-5 h-5 text-[#FF5A1F] mb-2.5" />
+-              <h2 className="text-sm font-bold text-white">Konten Dinamis Berbasis CMS</h2>
+-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+-                Dokumentasi kegiatan, progres tim, dan pengumuman terbaru dapat diperbarui langsung oleh admin.
+-              </p>
+-            </div>
+-          </div>
+-        </section>
+-
+-        {/* Dynamic Gallery Section */}
+-        <section id="gallery" className="max-w-6xl mx-auto px-4 py-20">
+-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+-            <div>
+-              <span className="text-xs font-bold tracking-wider text-[#FF5A1F] uppercase">
+-                Dokumentasi & Progres
+-              </span>
+-              <h2 className="text-2xl sm:text-3xl font-black italic text-white mt-1">
+-                GALERI TIM SAGARA
+-              </h2>
+-            </div>
+-
+-            {/* Category Filter */}
+-            <div className="flex flex-wrap gap-2">
+-              {CATEGORIES.map((cat) => {
+-                const active = selectedCategory === cat;
+-                return (
+-                  <button
+-                    key={cat}
+-                    onClick={() => setSelectedCategory(cat)}
+-                    className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+-                      active
+-                        ? 'bg-[#FF5A1F] text-white'
+-                        : 'bg-[#0B2239]/80 text-slate-300 border border-cyan-400/15 hover:border-cyan-400/40'
+-                    }`}
+-                  >
+-                    {cat}
+-                  </button>
+-                );
+-              })}
+-            </div>
+-          </div>
+-
+-          {filteredGallery.length === 0 ? (
+-            <div className="rounded-2xl border border-cyan-400/15 bg-[#0B2239]/50 p-10 text-center">
+-              <p className="text-sm text-slate-300 font-semibold">
+-                Belum ada foto untuk kategori &ldquo;{selectedCategory}&rdquo;.
+-              </p>
+-              <p className="text-xs text-slate-400 mt-1">
+-                Upload foto lewat halaman{' '}
+-                <Link href="/admin" className="text-[#FF5A1F] underline">
+-                  Admin Portal
+-                </Link>{' '}
+-                untuk menampilkannya di sini.
+-              </p>
+-            </div>
+-          ) : (
+-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+-              {filteredGallery.map((item) => (
+-                <article
+-                  key={item.id}
+-                  className="group rounded-2xl border border-cyan-400/15 bg-[#0B2239]/65 backdrop-blur-sm overflow-hidden hover:border-[#FF5A1F]/50 transition"
+-                >
+-                  <div className="aspect-[4/3] overflow-hidden bg-[#06131F]">
+-                    <img
+-                      src={item.image_url}
+-                      alt={item.title}
+-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+-                    />
+-                  </div>
+-                  <div className="p-4">
+-                    <span className="inline-block rounded-md bg-[#FF5A1F]/15 text-[#FF5A1F] text-[10px] font-bold px-2.5 py-0.5 mb-2">
+-                      {item.category}
+-                    </span>
+-                    <h3 className="text-base font-bold text-white">{item.title}</h3>
+-                    {item.caption && (
+-                      <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
+-                        {item.caption}
+-                      </p>
+-                    )}
+-                  </div>
+-                </article>
+-              ))}
+-            </div>
+-          )}
+-        </section>
+-      </main>
+-
+-      {/* Footer */}
+-      <footer className="border-t border-cyan-400/15 bg-[#040C14] py-8 text-center text-xs text-slate-400 relative z-10">
+-        <p className="font-semibold text-slate-200">
+-          SAGARA ITENAS ROV TEAM — Institut Teknologi Nasional Bandung
+-        </p>
+-        <p className="mt-1">Dynamic Team Portfolio • Next.js & Supabase</p>
+-      </footer>
+-    </div>
+-  );
+-}
+\ No newline at end of file
+diff --git a/src/app/globals.css b/src/app/globals.css
+index a2dc41e..28278ed 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -1,26 +1,90 @@
+ @import "tailwindcss";
+ 
+-:root {
+-  --background: #ffffff;
+-  --foreground: #171717;
++/* Palet "kolom air": makin turun makin gelap. Oranye hanya untuk aksi. */
++@theme {
++  --color-surface: #14688a;
++  --color-shallows: #0d4a6b;
++  --color-midwater: #08304b;
++  --color-abyss: #04141f;
++  --color-foam: #e8f5f8;
++  --color-mist: #9bbdcc;
++  --color-flare: #ff5a1f;
++  --color-flare-deep: #e04612;
++  --color-line: rgb(232 245 248 / 0.14);
+ }
+ 
+ @theme inline {
+-  --color-background: var(--background);
+-  --color-foreground: var(--foreground);
+-  --font-sans: var(--font-geist-sans);
+-  --font-mono: var(--font-geist-mono);
++  --font-display: var(--font-barlow-condensed), "Arial Narrow", sans-serif;
++  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
+ }
+ 
+-@media (prefers-color-scheme: dark) {
+-  :root {
+-    --background: #0a0a0a;
+-    --foreground: #ededed;
+-  }
++html {
++  scroll-behavior: smooth;
+ }
+ 
+ body {
+-  background: var(--background);
+-  color: var(--foreground);
+-  font-family: Arial, Helvetica, sans-serif;
++  background: var(--color-abyss);
++  color: var(--color-foam);
++  font-family: var(--font-sans);
++}
++
++:focus-visible {
++  outline: 2px solid var(--color-flare);
++  outline-offset: 3px;
++}
++
++/* Sinar cahaya dari permukaan (hero) */
++.light-rays {
++  background: repeating-linear-gradient(
++    104deg,
++    transparent 0 7%,
++    rgb(232 245 248 / 0.08) 7% 9%,
++    transparent 9% 16%
++  );
++  mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
++}
++
++/* Gelembung naik: satu-satunya animasi otomatis di situs */
++@keyframes bubble-rise {
++  0% {
++    transform: translateY(0) scale(0.8);
++    opacity: 0;
++  }
++  15% {
++    opacity: 0.55;
++  }
++  100% {
++    transform: translateY(-75vh) scale(1.1);
++    opacity: 0;
++  }
++}
++
++.bubble {
++  position: absolute;
++  bottom: -1rem;
++  left: var(--x);
++  width: var(--size);
++  height: var(--size);
++  border-radius: 9999px;
++  border: 1px solid rgb(232 245 248 / 0.45);
++  animation: bubble-rise var(--dur, 12s) linear var(--delay, 0s) infinite;
++}
++
++/* Garis sonar tipis untuk placeholder foto */
++.sonar-lines {
++  background-image: repeating-linear-gradient(
++    0deg,
++    transparent 0 23px,
++    rgb(232 245 248 / 0.06) 23px 24px
++  );
++}
++
++@media (prefers-reduced-motion: reduce) {
++  html {
++    scroll-behavior: auto;
++  }
++  .bubble {
++    animation: none;
++    opacity: 0.25;
++  }
+ }
+diff --git a/src/app/layout.tsx b/src/app/layout.tsx
+index 9852c15..417374e 100644
+--- a/src/app/layout.tsx
++++ b/src/app/layout.tsx
+@@ -1,27 +1,34 @@
+ import type { Metadata } from "next";
+-import { Geist, Geist_Mono } from "next/font/google";
++import { Barlow_Condensed, IBM_Plex_Sans } from "next/font/google";
++import { SITE } from "@/constants/site";
+ import "./globals.css";
+ 
+-const geistSans = Geist({
+-  variable: "--font-geist-sans",
++const barlowCondensed = Barlow_Condensed({
++  variable: "--font-barlow-condensed",
+   subsets: ["latin"],
++  weight: ["600", "700", "800"],
++  style: ["normal", "italic"],
+ });
+ 
+-const geistMono = Geist_Mono({
+-  variable: "--font-geist-mono",
++const plexSans = IBM_Plex_Sans({
++  variable: "--font-plex-sans",
+   subsets: ["latin"],
++  weight: ["400", "500", "600"],
+ });
+ 
+ export const metadata: Metadata = {
+-  title: "Create Next App",
+-  description: "Generated by create next app",
++  title: {
++    default: `${SITE.fullName} | ${SITE.institution}`,
++    template: `%s | ${SITE.fullName}`,
++  },
++  description: SITE.description,
+ };
+ 
+ export default function RootLayout({ children }: LayoutProps<"/">) {
+   return (
+     <html
+-      lang="en"
+-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
++      lang="id"
++      className={`${barlowCondensed.variable} ${plexSans.variable} h-full antialiased`}
+     >
+       <body className="min-h-full flex flex-col">{children}</body>
+     </html>
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+deleted file mode 100644
+index ca6418d..0000000
+--- a/src/app/page.tsx
++++ /dev/null
+@@ -1,369 +0,0 @@
+-'use client';
+-
+-import { useEffect, useState } from 'react';
+-import Link from 'next/link';
+-import dynamic from 'next/dynamic';
+-import { motion } from 'framer-motion';
+-import { supabase } from '@/lib/supabase';
+-import {
+-  Anchor,
+-  Compass,
+-  Waves,
+-  ArrowDownRight,
+-  ShieldCheck,
+-} from 'lucide-react';
+-
+-const RovViewer3D = dynamic(() => import('@/components/RovViewer3D'), {
+-  ssr: false,
+-  loading: () => (
+-    <div className="h-64 rounded-2xl border border-cyan-400/20 bg-[#06131F]/80 flex items-center justify-center text-xs text-slate-400">
+-      Memuatkan 3D ROV...
+-    </div>
+-  ),
+-});
+-
+-interface HeroContent {
+-  title: string;
+-  subtitle: string | null;
+-  description: string | null;
+-  image_url: string | null;
+-}
+-
+-interface GalleryItem {
+-  id: string;
+-  title: string;
+-  category: string;
+-  caption: string | null;
+-  image_url: string;
+-  event_date: string;
+-}
+-
+-const CATEGORIES = [
+-  'Semua',
+-  'KKI 2026',
+-  'Progres ROV',
+-  'Open Recruitment',
+-  'Kegiatan Tim',
+-];
+-
+-export default function HomePage() {
+-  const [hero, setHero] = useState<HeroContent>({
+-    title: 'EXPLORE DEEPER.',
+-    subtitle: 'SAGARA ITENAS ROV TEAM',
+-    description:
+-      'Tim riset dan pengembangan wahana bawah air (Remotely Operated Vehicle) Institut Teknologi Nasional Bandung.',
+-    image_url: null,
+-  });
+-  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+-  const [selectedCategory, setSelectedCategory] = useState('Semua');
+-  const [depthMeters, setDepthMeters] = useState(0);
+-
+-  useEffect(() => {
+-    const fetchPublicData = async () => {
+-      const { data: heroData } = await supabase
+-        .from('site_content')
+-        .select('title, subtitle, description, image_url')
+-        .eq('section_key', 'hero')
+-        .single();
+-
+-      if (heroData) {
+-        setHero(heroData);
+-      }
+-
+-      const { data: galleryData } = await supabase
+-        .from('gallery_posts')
+-        .select('*')
+-        .order('created_at', { ascending: false });
+-
+-      if (galleryData) {
+-        setGallery(galleryData);
+-      }
+-    };
+-
+-    fetchPublicData();
+-  }, []);
+-
+-  useEffect(() => {
+-    const handleScroll = () => {
+-      const scrollTop = window.scrollY;
+-      const docHeight =
+-        document.documentElement.scrollHeight - window.innerHeight;
+-      if (docHeight <= 0) {
+-        setDepthMeters(0);
+-        return;
+-      }
+-      const progress = Math.min(Math.max(scrollTop / docHeight, 0), 1);
+-      setDepthMeters(Math.round(progress * 100));
+-    };
+-
+-    window.addEventListener('scroll', handleScroll, { passive: true });
+-    handleScroll();
+-    return () => window.removeEventListener('scroll', handleScroll);
+-  }, []);
+-
+-  const filteredGallery =
+-    selectedCategory === 'Semua'
+-      ? gallery
+-      : gallery.filter((item) => item.category === selectedCategory);
+-
+-  return (
+-    <div className="min-h-screen bg-gradient-to-b from-[#06131F] via-[#091D31] to-[#040C14] text-slate-100 relative overflow-x-clip">
+-      {/* Ambient Deep-Sea Glow */}
+-      <div className="pointer-events-none fixed inset-0 z-0">
+-        <div className="absolute -top-32 left-1/4 h-96 w-96 rounded-full bg-cyan-500/10 blur-[130px]" />
+-        <div className="absolute top-1/2 right-10 h-80 w-80 rounded-full bg-[#FF5A1F]/10 blur-[140px]" />
+-      </div>
+-
+-      {/* Depth Meter Indicator (Fixed Right) */}
+-      <aside
+-        aria-label="Depth Meter"
+-        className="hidden md:flex fixed right-5 top-1/2 -translate-y-1/2 z-30 flex-col items-center gap-2 rounded-2xl border border-cyan-400/20 bg-[#06131F]/80 backdrop-blur-md px-3 py-4 text-xs"
+-      >
+-        <Waves className="w-4 h-4 text-cyan-300" />
+-        <span className="text-[10px] uppercase tracking-widest text-slate-400">
+-          Depth
+-        </span>
+-        <span className="font-mono font-bold text-[#FF5A1F] text-sm">
+-          {depthMeters}m
+-        </span>
+-        <div className="w-1.5 h-24 rounded-full bg-slate-800 overflow-hidden relative mt-1">
+-          <div
+-            className="w-full bg-gradient-to-b from-cyan-400 to-[#FF5A1F] transition-all duration-150"
+-            style={{ height: `${Math.max(depthMeters, 8)}%` }}
+-          />
+-        </div>
+-      </aside>
+-
+-      {/* Navbar */}
+-      <header className="sticky top-0 z-30 border-b border-cyan-400/15 bg-[#06131F]/75 backdrop-blur-md">
+-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+-          <Link href="/" className="flex items-center gap-2.5 font-extrabold tracking-wide">
+-            <span className="w-8 h-8 rounded-lg bg-[#FF5A1F] flex items-center justify-center text-white shadow-lg shadow-[#FF5A1F]/25">
+-              <Anchor className="w-4 h-4" />
+-            </span>
+-            <div>
+-              <span className="text-sm block leading-none text-white">SAGARA</span>
+-              <span className="text-[10px] tracking-widest text-cyan-300/80">
+-                ITENAS ROV TEAM
+-              </span>
+-            </div>
+-          </Link>
+-
+-          <nav className="hidden sm:flex items-center gap-6 text-xs font-semibold text-slate-300">
+-            <a href="#about" className="hover:text-[#FF5A1F] transition">
+-              Tentang Tim
+-            </a>
+-            <a href="#rov-3d" className="hover:text-[#FF5A1F] transition">
+-              3D ROV
+-            </a>
+-            <a href="#gallery" className="hover:text-[#FF5A1F] transition">
+-              Galeri &amp; Recap
+-            </a>
+-          </nav>
+-
+-          <Link
+-            href="/admin"
+-            className="rounded-xl border border-cyan-400/25 bg-[#0B2239]/80 hover:border-[#FF5A1F] px-3.5 py-2 text-xs font-semibold text-slate-200 transition"
+-          >
+-            Admin Portal
+-          </Link>
+-        </div>
+-      </header>
+-
+-      <main className="relative z-10">
+-        {/* Hero Section */}
+-        <section className="max-w-6xl mx-auto px-4 pt-16 pb-20 md:pt-24 md:pb-28">
+-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+-            <motion.div
+-              initial={{ opacity: 0, y: 18 }}
+-              animate={{ opacity: 1, y: 0 }}
+-              transition={{ duration: 0.5 }}
+-              className="lg:col-span-7 space-y-5"
+-            >
+-              <div className="inline-flex items-center gap-2 rounded-full border border-[#FF5A1F]/35 bg-[#FF5A1F]/15 px-3.5 py-1 text-xs font-bold tracking-wider text-[#FF5A1F]">
+-                <Compass className="w-3.5 h-3.5" />
+-                {hero.subtitle || 'SAGARA ITENAS ROV TEAM'}
+-              </div>
+-
+-              <h1 className="text-4xl sm:text-6xl font-black italic tracking-tight text-white leading-[1.03]">
+-                {hero.title}
+-              </h1>
+-
+-              <p className="text-sm sm:text-base text-slate-300 max-w-xl leading-relaxed">
+-                {hero.description}
+-              </p>
+-
+-              <div className="flex flex-wrap items-center gap-3.5 pt-2">
+-                <a
+-                  href="#gallery"
+-                  className="inline-flex items-center gap-2 rounded-xl bg-[#FF5A1F] hover:bg-[#e44b14] text-white font-bold text-xs sm:text-sm px-5 py-3 shadow-lg shadow-[#FF5A1F]/25 transition"
+-                >
+-                  Lihat Dokumentasi
+-                  <ArrowDownRight className="w-4 h-4" />
+-                </a>
+-                <a
+-                  href="#rov-3d"
+-                  className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/25 bg-[#0B2239]/70 hover:bg-[#0B2239] text-cyan-100 font-semibold text-xs sm:text-sm px-5 py-3 backdrop-blur-sm transition"
+-                >
+-                  Eksplorasi Wahana 3D
+-                </a>
+-              </div>
+-            </motion.div>
+-
+-            {/* 3D ROV Card */}
+-            <motion.div
+-              initial={{ opacity: 0, scale: 0.96 }}
+-              animate={{ opacity: 1, scale: 1 }}
+-              transition={{ duration: 0.6, delay: 0.1 }}
+-              id="rov-3d"
+-              className="lg:col-span-5"
+-            >
+-              <div className="rounded-3xl border border-cyan-400/20 bg-[#0B2239]/65 backdrop-blur-md p-6 shadow-2xl relative overflow-hidden">
+-                <div className="flex items-center justify-between text-xs mb-4">
+-                  <span className="font-mono text-cyan-300">
+-                    UNIT // UNDERWATER ROV
+-                  </span>
+-                  <span className="rounded-full bg-[#FF5A1F]/20 text-[#FF5A1F] border border-[#FF5A1F]/30 px-2.5 py-0.5 text-[10px] font-bold">
+-                    3D INTERACTIVE
+-                  </span>
+-                </div>
+-
+-                <RovViewer3D />
+-
+-                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+-                  <div className="rounded-xl bg-[#06131F]/70 border border-slate-800 p-2.5">
+-                    <div className="text-xs font-extrabold text-white">ROV</div>
+-                    <div className="text-[10px] text-slate-400">Wahana Utama</div>
+-                  </div>
+-                  <div className="rounded-xl bg-[#06131F]/70 border border-slate-800 p-2.5">
+-                    <div className="text-xs font-extrabold text-[#FF5A1F]">KKI</div>
+-                    <div className="text-[10px] text-slate-400">Kompetisi</div>
+-                  </div>
+-                  <div className="rounded-xl bg-[#06131F]/70 border border-slate-800 p-2.5">
+-                    <div className="text-xs font-extrabold text-cyan-300">ITENAS</div>
+-                    <div className="text-[10px] text-slate-400">Bandung</div>
+-                  </div>
+-                </div>
+-              </div>
+-            </motion.div>
+-          </div>
+-        </section>
+-
+-        {/* About Strip */}
+-        <section
+-          id="about"
+-          className="border-y border-cyan-400/15 bg-[#0B2239]/40 backdrop-blur-sm py-12"
+-        >
+-          <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+-            <div className="rounded-2xl border border-cyan-400/15 bg-[#06131F]/65 p-5">
+-              <ShieldCheck className="w-5 h-5 text-[#FF5A1F] mb-2.5" />
+-              <h2 className="text-sm font-bold text-white">Riset &amp; Rekayasa Wahana</h2>
+-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+-                Pengembangan sistem mekanik, elektrik, kontrol, dan navigasi wahana bawah air secara terintegrasi.
+-              </p>
+-            </div>
+-            <div className="rounded-2xl border border-cyan-400/15 bg-[#06131F]/65 p-5">
+-              <Waves className="w-5 h-5 text-cyan-300 mb-2.5" />
+-              <h2 className="text-sm font-bold text-white">Kesiapan Kompetisi</h2>
+-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+-                Pengujian performa, manuver, dan misi wahana untuk ajang kompetisi nasional seperti Kontes Kapal Indonesia.
+-              </p>
+-            </div>
+-            <div className="rounded-2xl border border-cyan-400/15 bg-[#06131F]/65 p-5">
+-              <Anchor className="w-5 h-5 text-[#FF5A1F] mb-2.5" />
+-              <h2 className="text-sm font-bold text-white">Konten Dinamis Berbasis CMS</h2>
+-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+-                Dokumentasi kegiatan, progres tim, dan pengumuman terbaru dapat diperbarui langsung oleh admin.
+-              </p>
+-            </div>
+-          </div>
+-        </section>
+-
+-        {/* Dynamic Gallery Section */}
+-        <section id="gallery" className="max-w-6xl mx-auto px-4 py-20">
+-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+-            <div>
+-              <span className="text-xs font-bold tracking-wider text-[#FF5A1F] uppercase">
+-                Dokumentasi &amp; Progres
+-              </span>
+-              <h2 className="text-2xl sm:text-3xl font-black italic text-white mt-1">
+-                GALERI TIM SAGARA
+-              </h2>
+-            </div>
+-
+-            {/* Category Filter */}
+-            <div className="flex flex-wrap gap-2">
+-              {CATEGORIES.map((cat) => {
+-                const active = selectedCategory === cat;
+-                return (
+-                  <button
+-                    key={cat}
+-                    onClick={() => setSelectedCategory(cat)}
+-                    className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+-                      active
+-                        ? 'bg-[#FF5A1F] text-white'
+-                        : 'bg-[#0B2239]/80 text-slate-300 border border-cyan-400/15 hover:border-cyan-400/40'
+-                    }`}
+-                  >
+-                    {cat}
+-                  </button>
+-                );
+-              })}
+-            </div>
+-          </div>
+-
+-          {filteredGallery.length === 0 ? (
+-            <div className="rounded-2xl border border-cyan-400/15 bg-[#0B2239]/50 p-10 text-center">
+-              <p className="text-sm text-slate-300 font-semibold">
+-                Belum ada foto untuk kategori &ldquo;{selectedCategory}&rdquo;.
+-              </p>
+-              <p className="text-xs text-slate-400 mt-1">
+-                Upload foto lewat halaman{' '}
+-                <Link href="/admin" className="text-[#FF5A1F] underline">
+-                  Admin Portal
+-                </Link>{' '}
+-                untuk menampilkannya di sini.
+-              </p>
+-            </div>
+-          ) : (
+-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+-              {filteredGallery.map((item) => (
+-                <article
+-                  key={item.id}
+-                  className="group rounded-2xl border border-cyan-400/15 bg-[#0B2239]/65 backdrop-blur-sm overflow-hidden hover:border-[#FF5A1F]/50 transition"
+-                >
+-                  <div className="aspect-[4/3] overflow-hidden bg-[#06131F]">
+-                    <img
+-                      src={item.image_url}
+-                      alt={item.title}
+-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+-                    />
+-                  </div>
+-                  <div className="p-4">
+-                    <span className="inline-block rounded-md bg-[#FF5A1F]/15 text-[#FF5A1F] text-[10px] font-bold px-2.5 py-0.5 mb-2">
+-                      {item.category}
+-                    </span>
+-                    <h3 className="text-base font-bold text-white">{item.title}</h3>
+-                    {item.caption && (
+-                      <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
+-                        {item.caption}
+-                      </p>
+-                    )}
+-                  </div>
+-                </article>
+-              ))}
+-            </div>
+-          )}
+-        </section>
+-      </main>
+-
+-      {/* Footer */}
+-      <footer className="border-t border-cyan-400/15 bg-[#040C14] py-8 text-center text-xs text-slate-400 relative z-10">
+-        <p className="font-semibold text-slate-200">
+-          SAGARA ITENAS ROV TEAM — Institut Teknologi Nasional Bandung
+-        </p>
+-        <p className="mt-1">Dynamic Team Portfolio • Next.js &amp; Supabase</p>
+-      </footer>
+-    </div>
+-  );
+-}
+\ No newline at end of file
+diff --git a/src/components/admin/AdminShell.tsx b/src/components/admin/AdminShell.tsx
+new file mode 100644
+index 0000000..7856584
+--- /dev/null
++++ b/src/components/admin/AdminShell.tsx
+@@ -0,0 +1,108 @@
++'use client';
++
++import { useEffect, useState, type ReactNode } from 'react';
++import Link from 'next/link';
++import { usePathname, useRouter } from 'next/navigation';
++import { FileText, Images, LayoutDashboard, LogOut } from 'lucide-react';
++import { supabase } from '@/lib/supabase/client';
++
++const MENU = [
++  { label: 'Ringkasan', href: '/admin', icon: LayoutDashboard },
++  { label: 'Galeri', href: '/admin/gallery', icon: Images },
++  { label: 'Konten situs', href: '/admin/site-content', icon: FileText },
++];
++
++/**
++ * Pembungkus dashboard: memeriksa sesi login lalu menampilkan sidebar.
++ * Pengecekan di sini hanya mengatur tampilan. Keamanan data yang sebenarnya
++ * dijaga oleh RLS di Supabase.
++ */
++export function AdminShell({ children }: { children: ReactNode }) {
++  const router = useRouter();
++  const pathname = usePathname();
++  const [checked, setChecked] = useState(false);
++
++  useEffect(() => {
++    let active = true;
++
++    supabase.auth.getSession().then(({ data }) => {
++      if (!active) return;
++      if (!data.session) {
++        router.replace('/admin/login');
++        return;
++      }
++      setChecked(true);
++    });
++
++    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
++      if (!session) router.replace('/admin/login');
++    });
++
++    return () => {
++      active = false;
++      listener.subscription.unsubscribe();
++    };
++  }, [router]);
++
++  async function handleSignOut() {
++    await supabase.auth.signOut();
++    router.replace('/admin/login');
++  }
++
++  if (!checked) {
++    return (
++      <div className="flex min-h-screen items-center justify-center bg-abyss text-mist">
++        Memeriksa sesi login…
++      </div>
++    );
++  }
++
++  return (
++    <div className="min-h-screen bg-abyss md:grid md:grid-cols-[240px_1fr]">
++      <aside className="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-midwater p-4 md:sticky md:top-0 md:h-screen md:flex-col md:items-stretch md:justify-start md:gap-8 md:border-b-0 md:border-r md:p-6">
++        <div>
++          <p className="font-display text-3xl font-extrabold italic leading-none text-foam">
++            Sagara
++          </p>
++          <p className="mt-1 text-xs text-mist">Dashboard admin</p>
++        </div>
++
++        <nav aria-label="Menu admin" className="flex gap-1 md:flex-col">
++          {MENU.map((item) => {
++            const active = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href);
++            const Icon = item.icon;
++            return (
++              <Link
++                key={item.href}
++                href={item.href}
++                aria-current={active ? 'page' : undefined}
++                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
++                  active ? 'bg-shallows text-foam' : 'text-mist hover:text-foam'
++                }`}
++              >
++                <Icon className="h-4 w-4" aria-hidden="true" />
++                {item.label}
++              </Link>
++            );
++          })}
++        </nav>
++
++        <div className="flex gap-3 text-sm md:mt-auto md:flex-col md:gap-2">
++          <Link href="/" className="text-mist transition-colors hover:text-foam">
++            Lihat situs
++          </Link>
++          <button
++            type="button"
++            onClick={handleSignOut}
++            className="flex cursor-pointer items-center gap-2 text-mist transition-colors hover:text-foam"
++          >
++            <LogOut className="h-4 w-4" aria-hidden="true" />
++            Keluar
++          </button>
++        </div>
++      </aside>
++
++      <main className="p-5 sm:p-10">{children}</main>
++    </div>
++  );
++}
+diff --git a/src/components/admin/Field.tsx b/src/components/admin/Field.tsx
+new file mode 100644
+index 0000000..007ac4f
+--- /dev/null
++++ b/src/components/admin/Field.tsx
+@@ -0,0 +1,23 @@
++import type { ReactNode } from 'react';
++
++export const inputClass =
++  'w-full rounded-md border border-line bg-abyss px-3 py-2.5 text-sm text-foam placeholder:text-mist/70 focus:border-flare [color-scheme:dark]';
++
++interface FieldProps {
++  label: string;
++  htmlFor: string;
++  hint?: string;
++  children: ReactNode;
++}
++
++export function Field({ label, htmlFor, hint, children }: FieldProps) {
++  return (
++    <div>
++      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-foam">
++        {label}
++      </label>
++      {children}
++      {hint && <p className="mt-1.5 text-xs text-mist">{hint}</p>}
++    </div>
++  );
++}
+diff --git a/src/components/admin/GalleryForm.tsx b/src/components/admin/GalleryForm.tsx
+new file mode 100644
+index 0000000..ad3d83e
+--- /dev/null
++++ b/src/components/admin/GalleryForm.tsx
+@@ -0,0 +1,168 @@
++'use client';
++
++import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
++import { GALLERY_CATEGORIES } from '@/constants/categories';
++import {
++  createGalleryPost,
++  updateGalleryPost,
++  uploadGalleryImage,
++} from '@/lib/supabase/queries';
++import { getErrorMessage } from '@/lib/errors';
++import { Button } from '@/components/ui/Button';
++import type { GalleryPost } from '@/types/gallery';
++import { Field, inputClass } from './Field';
++
++interface GalleryFormProps {
++  initial?: GalleryPost | null;
++  onSaved: () => void;
++  onCancel?: () => void;
++}
++
++export function GalleryForm({ initial = null, onSaved, onCancel }: GalleryFormProps) {
++  const [title, setTitle] = useState(initial?.title ?? '');
++  const [category, setCategory] = useState<string>(initial?.category ?? GALLERY_CATEGORIES[0]);
++  const [caption, setCaption] = useState(initial?.caption ?? '');
++  const [eventDate, setEventDate] = useState(initial?.event_date?.slice(0, 10) ?? '');
++  const [file, setFile] = useState<File | null>(null);
++  const [saving, setSaving] = useState(false);
++  const [error, setError] = useState('');
++
++  const localPreview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
++  useEffect(() => {
++    return () => {
++      if (localPreview) URL.revokeObjectURL(localPreview);
++    };
++  }, [localPreview]);
++
++  const preview = localPreview ?? initial?.image_url ?? null;
++
++  function handleFile(event: ChangeEvent<HTMLInputElement>) {
++    setFile(event.target.files?.[0] ?? null);
++  }
++
++  async function handleSubmit(event: FormEvent) {
++    event.preventDefault();
++    setError('');
++
++    if (!initial && !file) {
++      setError('Pilih foto yang akan diunggah.');
++      return;
++    }
++
++    setSaving(true);
++    try {
++      const imageUrl = file ? await uploadGalleryImage(file) : (initial?.image_url ?? '');
++      const payload = {
++        title: title.trim(),
++        category,
++        caption: caption.trim() || null,
++        image_url: imageUrl,
++        event_date: eventDate,
++      };
++
++      if (initial) {
++        await updateGalleryPost(initial.id, payload);
++      } else {
++        await createGalleryPost(payload);
++      }
++      onSaved();
++    } catch (err) {
++      setError(
++        `Foto belum tersimpan. Detail: ${getErrorMessage(err, 'tidak diketahui')}`,
++      );
++    } finally {
++      setSaving(false);
++    }
++  }
++
++  return (
++    <form onSubmit={handleSubmit} className="space-y-5">
++      <Field label="Judul" htmlFor="gallery-title">
++        <input
++          id="gallery-title"
++          required
++          value={title}
++          onChange={(e) => setTitle(e.target.value)}
++          className={inputClass}
++        />
++      </Field>
++
++      <div className="grid gap-5 sm:grid-cols-2">
++        <Field label="Kategori" htmlFor="gallery-category">
++          <select
++            id="gallery-category"
++            value={category}
++            onChange={(e) => setCategory(e.target.value)}
++            className={inputClass}
++          >
++            {GALLERY_CATEGORIES.map((item) => (
++              <option key={item} value={item}>
++                {item}
++              </option>
++            ))}
++          </select>
++        </Field>
++        <Field label="Tanggal kegiatan" htmlFor="gallery-date">
++          <input
++            id="gallery-date"
++            type="date"
++            required
++            value={eventDate}
++            onChange={(e) => setEventDate(e.target.value)}
++            className={inputClass}
++          />
++        </Field>
++      </div>
++
++      <Field label="Keterangan" htmlFor="gallery-caption" hint="Opsional.">
++        <textarea
++          id="gallery-caption"
++          rows={3}
++          value={caption}
++          onChange={(e) => setCaption(e.target.value)}
++          className={inputClass}
++        />
++      </Field>
++
++      <Field
++        label="Foto"
++        htmlFor="gallery-file"
++        hint={initial ? 'Kosongkan jika tidak ingin mengganti foto.' : 'Format JPG, PNG, atau WebP.'}
++      >
++        <input
++          id="gallery-file"
++          type="file"
++          accept="image/*"
++          onChange={handleFile}
++          className="block w-full text-sm text-mist file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-shallows file:px-4 file:py-2 file:text-sm file:font-semibold file:text-foam hover:file:bg-surface"
++        />
++      </Field>
++
++      {preview && (
++        // eslint-disable-next-line @next/next/no-img-element
++        <img
++          src={preview}
++          alt="Pratinjau foto"
++          className="max-h-64 rounded-md border border-line object-contain"
++        />
++      )}
++
++      {error && (
++        <p role="alert" className="text-sm text-flare">
++          {error}
++        </p>
++      )}
++
++      <div className="flex gap-3">
++        <Button type="submit" disabled={saving}>
++          {saving ? 'Menyimpan…' : initial ? 'Simpan perubahan' : 'Tambah foto'}
++        </Button>
++        {onCancel && (
++          <Button type="button" variant="ghost" onClick={onCancel} disabled={saving}>
++            Batal
++          </Button>
++        )}
++      </div>
++    </form>
++  );
++}
+diff --git a/src/components/admin/HeroForm.tsx b/src/components/admin/HeroForm.tsx
+new file mode 100644
+index 0000000..eeb6d9d
+--- /dev/null
++++ b/src/components/admin/HeroForm.tsx
+@@ -0,0 +1,133 @@
++'use client';
++
++import { useEffect, useMemo, useState, type FormEvent } from 'react';
++import { saveHeroContent, uploadGalleryImage } from '@/lib/supabase/queries';
++import { getErrorMessage } from '@/lib/errors';
++import { Button } from '@/components/ui/Button';
++import type { HeroContent } from '@/types/site-content';
++import { Field, inputClass } from './Field';
++
++export function HeroForm({ initial }: { initial: HeroContent }) {
++  const [title, setTitle] = useState(initial.title);
++  const [subtitle, setSubtitle] = useState(initial.subtitle ?? '');
++  const [description, setDescription] = useState(initial.description ?? '');
++  const [file, setFile] = useState<File | null>(null);
++  const [saving, setSaving] = useState(false);
++  const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
++
++  const localPreview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
++  useEffect(() => {
++    return () => {
++      if (localPreview) URL.revokeObjectURL(localPreview);
++    };
++  }, [localPreview]);
++
++  const imagePreview = localPreview ?? initial.image_url;
++
++  async function handleSubmit(event: FormEvent) {
++    event.preventDefault();
++    setMessage(null);
++    setSaving(true);
++
++    try {
++      const imageUrl = file ? await uploadGalleryImage(file) : initial.image_url;
++      await saveHeroContent({
++        title: title.trim(),
++        subtitle: subtitle.trim() || null,
++        description: description.trim() || null,
++        image_url: imageUrl,
++      });
++      setMessage({ type: 'ok', text: 'Konten hero tersimpan.' });
++    } catch (err) {
++      setMessage({
++        type: 'error',
++        text: `Konten belum tersimpan. Detail: ${getErrorMessage(err, 'tidak diketahui')}`,
++      });
++    } finally {
++      setSaving(false);
++    }
++  }
++
++  return (
++    <div className="grid gap-10 lg:grid-cols-2">
++      <form onSubmit={handleSubmit} className="space-y-5">
++        <Field label="Judul" htmlFor="hero-title">
++          <input
++            id="hero-title"
++            required
++            value={title}
++            onChange={(e) => setTitle(e.target.value)}
++            className={inputClass}
++          />
++        </Field>
++        <Field label="Nama tim" htmlFor="hero-subtitle" hint="Tampil kecil di atas judul.">
++          <input
++            id="hero-subtitle"
++            value={subtitle}
++            onChange={(e) => setSubtitle(e.target.value)}
++            className={inputClass}
++          />
++        </Field>
++        <Field label="Deskripsi" htmlFor="hero-description">
++          <textarea
++            id="hero-description"
++            rows={4}
++            value={description}
++            onChange={(e) => setDescription(e.target.value)}
++            className={inputClass}
++          />
++        </Field>
++        <Field
++          label="Foto latar"
++          htmlFor="hero-file"
++          hint="Opsional. Foto tampil samar di belakang hero."
++        >
++          <input
++            id="hero-file"
++            type="file"
++            accept="image/*"
++            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
++            className="block w-full text-sm text-mist file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-shallows file:px-4 file:py-2 file:text-sm file:font-semibold file:text-foam hover:file:bg-surface"
++          />
++        </Field>
++
++        {message && (
++          <p
++            role={message.type === 'error' ? 'alert' : 'status'}
++            className={`text-sm ${message.type === 'error' ? 'text-flare' : 'text-foam'}`}
++          >
++            {message.text}
++          </p>
++        )}
++
++        <Button type="submit" disabled={saving}>
++          {saving ? 'Menyimpan…' : 'Simpan perubahan'}
++        </Button>
++      </form>
++
++      <div>
++        <p className="mb-3 text-sm font-medium text-foam">Pratinjau</p>
++        <div className="relative overflow-hidden rounded-md bg-surface p-8">
++          {imagePreview && (
++            // eslint-disable-next-line @next/next/no-img-element
++            <img
++              src={imagePreview}
++              alt=""
++              className="absolute inset-0 h-full w-full object-cover opacity-25"
++            />
++          )}
++          <div className="light-rays pointer-events-none absolute inset-0" aria-hidden="true" />
++          <div className="relative">
++            {subtitle && <p className="text-sm font-semibold text-foam/80">{subtitle}</p>}
++            <p className="mt-2 font-display text-5xl font-extrabold italic leading-[0.9] text-foam">
++              {title || 'Judul hero'}
++            </p>
++            {description && (
++              <p className="mt-4 max-w-sm leading-relaxed text-foam/85">{description}</p>
++            )}
++          </div>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/components/layout/Footer.tsx b/src/components/layout/Footer.tsx
+new file mode 100644
+index 0000000..4654e31
+--- /dev/null
++++ b/src/components/layout/Footer.tsx
+@@ -0,0 +1,80 @@
++import Link from 'next/link';
++import { NAV_LINKS } from '@/constants/nav-links';
++import { SITE } from '@/constants/site';
++import { Container } from '@/components/ui/Container';
++
++const pages = NAV_LINKS.flatMap((link) => link.children ?? [link]);
++
++const linkClass = 'text-mist transition-colors hover:text-foam';
++
++export function Footer() {
++  return (
++    <footer className="border-t border-line bg-abyss">
++      <Container className="grid gap-12 py-16 md:grid-cols-12">
++        <div className="md:col-span-6">
++          <p className="font-display text-6xl font-extrabold italic leading-none text-foam">
++            Sagara
++          </p>
++          <p className="mt-4 max-w-sm leading-relaxed text-mist">
++            {SITE.tagline} {SITE.institution}.
++          </p>
++        </div>
++
++        <nav aria-label="Halaman" className="md:col-span-3">
++          <h2 className="text-sm font-semibold text-foam">Halaman</h2>
++          <ul className="mt-4 space-y-2 text-sm">
++            {pages.map((page) => (
++              <li key={page.href}>
++                <Link href={page.href} className={linkClass}>
++                  {page.label}
++                </Link>
++              </li>
++            ))}
++          </ul>
++        </nav>
++
++        <div className="md:col-span-3">
++          <h2 className="text-sm font-semibold text-foam">Hubungi kami</h2>
++          <ul className="mt-4 space-y-2 text-sm">
++            <li>
++              <a href={`mailto:${SITE.email}`} className={linkClass}>
++                {SITE.email}
++              </a>
++            </li>
++            <li>
++              <a
++                href={SITE.instagram.url}
++                target="_blank"
++                rel="noopener noreferrer"
++                className={linkClass}
++              >
++                Instagram @{SITE.instagram.handle}
++              </a>
++            </li>
++            <li>
++              <a
++                href={SITE.tiktok.url}
++                target="_blank"
++                rel="noopener noreferrer"
++                className={linkClass}
++              >
++                TikTok @{SITE.tiktok.handle}
++              </a>
++            </li>
++          </ul>
++        </div>
++      </Container>
++
++      <div className="border-t border-line">
++        <Container className="flex flex-wrap items-center justify-between gap-3 py-5 text-sm text-mist">
++          <p>
++            {SITE.fullName}, {SITE.institution}
++          </p>
++          <Link href="/admin" className={linkClass}>
++            Admin
++          </Link>
++        </Container>
++      </div>
++    </footer>
++  );
++}
+diff --git a/src/components/layout/Navbar.tsx b/src/components/layout/Navbar.tsx
+new file mode 100644
+index 0000000..d56a1a3
+--- /dev/null
++++ b/src/components/layout/Navbar.tsx
+@@ -0,0 +1,114 @@
++'use client';
++
++import { useState } from 'react';
++import Link from 'next/link';
++import { usePathname } from 'next/navigation';
++import { Menu, X } from 'lucide-react';
++import { NAV_LINKS, type NavLink } from '@/constants/nav-links';
++import { Container } from '@/components/ui/Container';
++import { ButtonLink } from '@/components/ui/Button';
++
++export function Navbar() {
++  const pathname = usePathname();
++  const [open, setOpen] = useState(false);
++
++  const matches = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
++  const isActive = (link: NavLink) =>
++    matches(link.href) || Boolean(link.children?.some((child) => matches(child.href)));
++
++  const linkClass = (active: boolean) =>
++    `border-b-2 py-1 text-sm font-medium transition-colors hover:text-foam ${
++      active ? 'border-flare text-foam' : 'border-transparent text-foam/80'
++    }`;
++
++  return (
++    <header className="sticky top-0 z-40 border-b border-line bg-abyss/85 backdrop-blur">
++      <Container className="flex h-16 items-center justify-between">
++        <Link
++          href="/"
++          className="flex items-baseline gap-2"
++          onClick={() => setOpen(false)}
++        >
++          <span className="font-display text-3xl font-extrabold italic leading-none text-foam">
++            Sagara
++          </span>
++          <span className="hidden text-xs leading-tight text-mist sm:block">
++            Itenas ROV Team
++          </span>
++        </Link>
++
++        <nav aria-label="Navigasi utama" className="hidden items-center gap-8 md:flex">
++          {NAV_LINKS.map((link) =>
++            link.children ? (
++              <div key={link.href} className="group relative">
++                <Link href={link.href} className={linkClass(isActive(link))}>
++                  {link.label}
++                </Link>
++                <div className="invisible absolute left-0 top-full pt-3 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
++                  <ul className="w-56 rounded-md border border-line bg-midwater p-2">
++                    {link.children.map((child) => (
++                      <li key={child.href}>
++                        <Link
++                          href={child.href}
++                          className="block rounded px-3 py-2 hover:bg-shallows"
++                        >
++                          <span className="block text-sm font-medium text-foam">
++                            {child.label}
++                          </span>
++                          {child.hint && (
++                            <span className="block text-xs text-mist">{child.hint}</span>
++                          )}
++                        </Link>
++                      </li>
++                    ))}
++                  </ul>
++                </div>
++              </div>
++            ) : (
++              <Link key={link.href} href={link.href} className={linkClass(isActive(link))}>
++                {link.label}
++              </Link>
++            ),
++          )}
++          <ButtonLink href="/recruitment" size="sm">
++            Gabung Sagara
++          </ButtonLink>
++        </nav>
++
++        <button
++          type="button"
++          className="rounded-md p-2 text-foam hover:bg-shallows md:hidden"
++          aria-label={open ? 'Tutup menu' : 'Buka menu'}
++          aria-expanded={open}
++          aria-controls="mobile-menu"
++          onClick={() => setOpen((value) => !value)}
++        >
++          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
++        </button>
++      </Container>
++
++      {open && (
++        <nav
++          id="mobile-menu"
++          aria-label="Navigasi seluler"
++          className="border-t border-line bg-abyss md:hidden"
++        >
++          <Container className="flex flex-col gap-1 py-4">
++            {NAV_LINKS.flatMap((link) => link.children ?? [link]).map((item) => (
++              <Link
++                key={item.href}
++                href={item.href}
++                onClick={() => setOpen(false)}
++                className={`rounded-md px-3 py-3 text-base font-medium ${
++                  matches(item.href) ? 'bg-shallows text-foam' : 'text-foam/85'
++                }`}
++              >
++                {item.label}
++              </Link>
++            ))}
++          </Container>
++        </nav>
++      )}
++    </header>
++  );
++}
+diff --git a/src/components/sections/GalleryBrowser.tsx b/src/components/sections/GalleryBrowser.tsx
+new file mode 100644
+index 0000000..33ffb65
+--- /dev/null
++++ b/src/components/sections/GalleryBrowser.tsx
+@@ -0,0 +1,10 @@
++'use client';
++
++import { useGalleryPosts } from '@/hooks/useGalleryPosts';
++import { GalleryGrid } from './GalleryGrid';
++
++export function GalleryBrowser() {
++  const { posts, loading } = useGalleryPosts();
++
++  return <GalleryGrid posts={posts} loading={loading} showFilters />;
++}
+diff --git a/src/components/sections/GalleryGrid.tsx b/src/components/sections/GalleryGrid.tsx
+new file mode 100644
+index 0000000..e535409
+--- /dev/null
++++ b/src/components/sections/GalleryGrid.tsx
+@@ -0,0 +1,78 @@
++'use client';
++
++import { useState } from 'react';
++import { ALL_CATEGORY, GALLERY_FILTERS } from '@/constants/categories';
++import { formatDate } from '@/lib/format-date';
++import type { GalleryPost } from '@/types/gallery';
++
++interface GalleryGridProps {
++  posts: GalleryPost[];
++  loading: boolean;
++  showFilters?: boolean;
++}
++
++export function GalleryGrid({ posts, loading, showFilters = false }: GalleryGridProps) {
++  const [category, setCategory] = useState<string>(ALL_CATEGORY);
++
++  const visible =
++    category === ALL_CATEGORY ? posts : posts.filter((post) => post.category === category);
++
++  return (
++    <div>
++      {showFilters && (
++        <div className="mb-10 flex flex-wrap gap-x-6 gap-y-2">
++          {GALLERY_FILTERS.map((filter) => {
++            const active = filter === category;
++            return (
++              <button
++                key={filter}
++                type="button"
++                aria-pressed={active}
++                onClick={() => setCategory(filter)}
++                className={`cursor-pointer border-b-2 py-1 text-sm font-medium transition-colors hover:text-foam ${
++                  active ? 'border-flare text-foam' : 'border-transparent text-mist'
++                }`}
++              >
++                {filter}
++              </button>
++            );
++          })}
++        </div>
++      )}
++
++      {loading ? (
++        <p className="py-16 text-mist">Memuat galeri…</p>
++      ) : visible.length === 0 ? (
++        <p className="py-16 text-mist">
++          {category === ALL_CATEGORY
++            ? 'Belum ada foto di galeri.'
++            : `Belum ada foto di kategori ${category}.`}
++        </p>
++      ) : (
++        <ul className="columns-1 gap-6 sm:columns-2 lg:columns-3">
++          {visible.map((post) => (
++            <li key={post.id} className="mb-10 break-inside-avoid">
++              {/* eslint-disable-next-line @next/next/no-img-element */}
++              <img
++                src={post.image_url}
++                alt={post.title}
++                loading="lazy"
++                className="w-full rounded-md border border-line"
++              />
++              <div className="mt-3 flex flex-wrap items-baseline gap-x-3 text-xs text-mist">
++                <span className="font-semibold text-foam/90">{post.category}</span>
++                <span>{formatDate(post.event_date)}</span>
++              </div>
++              <h3 className="mt-1 text-lg font-semibold leading-snug text-foam">
++                {post.title}
++              </h3>
++              {post.caption && (
++                <p className="mt-1 text-sm leading-relaxed text-mist">{post.caption}</p>
++              )}
++            </li>
++          ))}
++        </ul>
++      )}
++    </div>
++  );
++}
+diff --git a/src/components/sections/Hero.tsx b/src/components/sections/Hero.tsx
+new file mode 100644
+index 0000000..a469fb0
+--- /dev/null
++++ b/src/components/sections/Hero.tsx
+@@ -0,0 +1,77 @@
++'use client';
++
++import type { CSSProperties } from 'react';
++import { useHeroContent } from '@/hooks/useHeroContent';
++import { Container } from '@/components/ui/Container';
++import { ButtonLink } from '@/components/ui/Button';
++import { RovViewer } from '@/components/three/RovViewer';
++
++const BUBBLES = [
++  { x: '6%', size: '10px', delay: '0s', dur: '13s' },
++  { x: '18%', size: '16px', delay: '4s', dur: '16s' },
++  { x: '34%', size: '8px', delay: '7s', dur: '12s' },
++  { x: '52%', size: '14px', delay: '2s', dur: '15s' },
++  { x: '68%', size: '9px', delay: '9s', dur: '13s' },
++  { x: '82%', size: '18px', delay: '5s', dur: '17s' },
++  { x: '93%', size: '11px', delay: '1s', dur: '14s' },
++];
++
++export function Hero() {
++  const { hero } = useHeroContent();
++
++  return (
++    <section className="relative overflow-hidden bg-surface">
++      {hero.image_url && (
++        // eslint-disable-next-line @next/next/no-img-element
++        <img
++          src={hero.image_url}
++          alt=""
++          className="absolute inset-0 h-full w-full object-cover opacity-25"
++        />
++      )}
++      <div className="light-rays pointer-events-none absolute inset-0" aria-hidden="true" />
++      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
++        {BUBBLES.map((bubble) => (
++          <span
++            key={bubble.x}
++            className="bubble"
++            style={
++              {
++                '--x': bubble.x,
++                '--size': bubble.size,
++                '--delay': bubble.delay,
++                '--dur': bubble.dur,
++              } as CSSProperties
++            }
++          />
++        ))}
++      </div>
++
++      <Container className="relative grid items-center gap-10 py-16 lg:grid-cols-12 lg:py-24">
++        <div className="lg:col-span-6">
++          {hero.subtitle && (
++            <p className="text-sm font-semibold text-foam/80">{hero.subtitle}</p>
++          )}
++          <h1 className="mt-3 font-display text-6xl font-extrabold italic leading-[0.88] tracking-tight text-foam sm:text-8xl">
++            {hero.title}
++          </h1>
++          {hero.description && (
++            <p className="mt-6 max-w-md text-lg leading-relaxed text-foam/85">
++              {hero.description}
++            </p>
++          )}
++          <div className="mt-8 flex flex-wrap gap-3">
++            <ButtonLink href="/gallery">Lihat dokumentasi</ButtonLink>
++            <ButtonLink href="/recruitment" variant="ghost">
++              Gabung Sagara
++            </ButtonLink>
++          </div>
++        </div>
++
++        <div className="lg:col-span-6">
++          <RovViewer heightClass="h-80 sm:h-[460px]" />
++        </div>
++      </Container>
++    </section>
++  );
++}
+diff --git a/src/components/sections/Highlights.tsx b/src/components/sections/Highlights.tsx
+new file mode 100644
+index 0000000..2d84b29
+--- /dev/null
++++ b/src/components/sections/Highlights.tsx
+@@ -0,0 +1,37 @@
++import { Container } from '@/components/ui/Container';
++import { SectionHeading } from '@/components/ui/SectionHeading';
++
++const HIGHLIGHTS = [
++  {
++    title: 'Riset dan rekayasa wahana',
++    body: 'Kami merancang sistem mekanik, elektrik, kontrol, dan navigasi wahana bawah air sebagai satu kesatuan.',
++  },
++  {
++    title: 'Siap bertanding',
++    body: 'Performa, manuver, dan misi wahana kami uji berulang kali sebelum turun ke kompetisi nasional seperti Kontes Kapal Indonesia.',
++  },
++  {
++    title: 'Tempat belajar',
++    body: 'Mahasiswa Itenas bisa bergabung lewat open recruitment dan belajar langsung membangun ROV bersama tim.',
++  },
++];
++
++export function Highlights() {
++  return (
++    <section className="bg-shallows py-20 sm:py-28">
++      <Container>
++        <SectionHeading title="Dari rancangan sampai kompetisi" />
++        <dl className="mt-12 divide-y divide-line border-y border-line">
++          {HIGHLIGHTS.map((item) => (
++            <div key={item.title} className="grid gap-3 py-8 md:grid-cols-12 md:gap-8">
++              <dt className="font-display text-3xl font-bold italic text-foam md:col-span-5">
++                {item.title}
++              </dt>
++              <dd className="leading-relaxed text-mist md:col-span-7">{item.body}</dd>
++            </div>
++          ))}
++        </dl>
++      </Container>
++    </section>
++  );
++}
+diff --git a/src/components/sections/PageHeader.tsx b/src/components/sections/PageHeader.tsx
+new file mode 100644
+index 0000000..b93b2f7
+--- /dev/null
++++ b/src/components/sections/PageHeader.tsx
+@@ -0,0 +1,26 @@
++import type { ReactNode } from 'react';
++import { Container } from '@/components/ui/Container';
++
++interface PageHeaderProps {
++  title: string;
++  description?: ReactNode;
++}
++
++/** Pembuka halaman dalam: lapisan permukaan air dengan sinar cahaya. */
++export function PageHeader({ title, description }: PageHeaderProps) {
++  return (
++    <section className="relative overflow-hidden bg-surface">
++      <div className="light-rays pointer-events-none absolute inset-0" aria-hidden="true" />
++      <Container className="relative py-20 sm:py-28">
++        <h1 className="font-display text-6xl font-extrabold italic leading-[0.9] tracking-tight text-foam sm:text-8xl">
++          {title}
++        </h1>
++        {description && (
++          <p className="mt-6 max-w-xl text-lg leading-relaxed text-foam/85">
++            {description}
++          </p>
++        )}
++      </Container>
++    </section>
++  );
++}
+diff --git a/src/components/sections/RecentGallery.tsx b/src/components/sections/RecentGallery.tsx
+new file mode 100644
+index 0000000..853c0b1
+--- /dev/null
++++ b/src/components/sections/RecentGallery.tsx
+@@ -0,0 +1,30 @@
++'use client';
++
++import { useGalleryPosts } from '@/hooks/useGalleryPosts';
++import { Container } from '@/components/ui/Container';
++import { SectionHeading } from '@/components/ui/SectionHeading';
++import { ButtonLink } from '@/components/ui/Button';
++import { GalleryGrid } from './GalleryGrid';
++
++export function RecentGallery() {
++  const { posts, loading } = useGalleryPosts(6);
++
++  return (
++    <section className="bg-midwater py-20 sm:py-28">
++      <Container>
++        <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
++          <SectionHeading
++            title="Dokumentasi terbaru"
++            description="Rangkuman kompetisi, progres ROV, dan kegiatan tim."
++          />
++          <ButtonLink href="/gallery" variant="ghost">
++            Lihat semua foto
++          </ButtonLink>
++        </div>
++        <div className="mt-12">
++          <GalleryGrid posts={posts} loading={loading} />
++        </div>
++      </Container>
++    </section>
++  );
++}
+diff --git a/src/components/sections/RecruitmentBanner.tsx b/src/components/sections/RecruitmentBanner.tsx
+new file mode 100644
+index 0000000..38e110f
+--- /dev/null
++++ b/src/components/sections/RecruitmentBanner.tsx
+@@ -0,0 +1,21 @@
++import { Container } from '@/components/ui/Container';
++import { ButtonLink } from '@/components/ui/Button';
++
++export function RecruitmentBanner() {
++  return (
++    <section className="bg-abyss py-24 sm:py-32">
++      <Container>
++        <h2 className="max-w-3xl font-display text-6xl font-extrabold italic leading-[0.9] tracking-tight text-foam sm:text-8xl">
++          Ready to go beyond?
++        </h2>
++        <p className="mt-6 max-w-md text-lg leading-relaxed text-mist">
++          Open recruitment Sagara terbuka untuk kamu yang ingin belajar membangun wahana
++          bawah air bersama tim.
++        </p>
++        <div className="mt-8">
++          <ButtonLink href="/recruitment">Lihat info pendaftaran</ButtonLink>
++        </div>
++      </Container>
++    </section>
++  );
++}
+diff --git a/src/components/sections/StoryRow.tsx b/src/components/sections/StoryRow.tsx
+new file mode 100644
+index 0000000..3efbaaa
+--- /dev/null
++++ b/src/components/sections/StoryRow.tsx
+@@ -0,0 +1,33 @@
++import type { ReactNode } from 'react';
++import { Container } from '@/components/ui/Container';
++import { ImagePlaceholder } from '@/components/ui/ImagePlaceholder';
++
++interface StoryRowProps {
++  title: string;
++  body: string;
++  imageLabel?: string;
++  reverse?: boolean;
++  children?: ReactNode;
++}
++
++/** Baris cerita: teks dan foto berdampingan, bergantian kiri-kanan. */
++export function StoryRow({
++  title,
++  body,
++  imageLabel,
++  reverse = false,
++  children,
++}: StoryRowProps) {
++  return (
++    <Container className="grid items-center gap-10 md:grid-cols-2 md:gap-16">
++      <div className={reverse ? 'md:order-2' : ''}>
++        <h2 className="font-display text-4xl font-bold italic leading-[0.95] text-foam sm:text-6xl">
++          {title}
++        </h2>
++        <p className="mt-5 max-w-md text-lg leading-relaxed text-mist">{body}</p>
++        {children && <div className="mt-6">{children}</div>}
++      </div>
++      <ImagePlaceholder label={imageLabel} className="aspect-[4/3]" />
++    </Container>
++  );
++}
+diff --git a/src/components/three/RovViewer.tsx b/src/components/three/RovViewer.tsx
+new file mode 100644
+index 0000000..c88f996
+--- /dev/null
++++ b/src/components/three/RovViewer.tsx
+@@ -0,0 +1,21 @@
++'use client';
++
++import dynamic from 'next/dynamic';
++
++// Three.js hanya jalan di browser, jadi dimuat tanpa SSR.
++const RovViewer3D = dynamic(() => import('./RovViewer3D'), {
++  ssr: false,
++  loading: () => (
++    <div className="flex h-72 items-center justify-center text-sm text-foam/80">
++      Memuat model 3D…
++    </div>
++  ),
++});
++
++interface RovViewerProps {
++  heightClass?: string;
++}
++
++export function RovViewer({ heightClass }: RovViewerProps) {
++  return <RovViewer3D heightClass={heightClass} />;
++}
+diff --git a/src/components/RovViewer3D.tsx b/src/components/three/RovViewer3D.tsx
+similarity index 93%
+rename from src/components/RovViewer3D.tsx
+rename to src/components/three/RovViewer3D.tsx
+index fcfa9cb..08e5f86 100644
+--- a/src/components/RovViewer3D.tsx
++++ b/src/components/three/RovViewer3D.tsx
+@@ -218,7 +218,11 @@ function DetailedProceduralRov({
+   );
+ }
+ 
+-export default function RovViewer3D() {
++export default function RovViewer3D({
++  heightClass = 'h-72',
++}: {
++  heightClass?: string;
++}) {
+   const [focusPart, setFocusPart] = useState<
+     'all' | 'frame' | 'thruster' | 'gripper'
+   >('all');
+@@ -232,10 +236,8 @@ export default function RovViewer3D() {
+ 
+   return (
+     <div className="space-y-2.5">
+-      <div className="h-64 w-full rounded-2xl border border-cyan-400/25 bg-gradient-to-b from-[#071C30] to-[#030B14] overflow-hidden relative">
++      <div className={`${heightClass} w-full relative`}>
+         <Canvas camera={{ position: [2.8, 1.55, 3.25], fov: 40 }} dpr={[1, 2]}>
+-          <color attach="background" args={['#040E18']} />
+-          <fog attach="fog" args={['#040E18', 6, 14]} />
+           <ambientLight intensity={0.75} />
+           <directionalLight position={[4, 6, 4]} intensity={1.9} color="#BAE6FD" />
+           <pointLight position={[-3, 2, -3]} intensity={1.3} color="#FF5A1F" />
+@@ -259,9 +261,9 @@ export default function RovViewer3D() {
+             key={key}
+             type="button"
+             onClick={() => setFocusPart(key)}
+-            className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold border transition cursor-pointer ${focusPart === key
+-                ? 'bg-[#FF5A1F] text-white border-[#FF5A1F]'
+-                : 'bg-[#06131F] text-slate-300 border-slate-800 hover:border-cyan-400/40'
++            className={`rounded-md px-3 py-1.5 text-xs font-semibold border transition-colors cursor-pointer ${focusPart === key
++                ? 'bg-flare text-abyss border-flare'
++                : 'border-line text-foam hover:border-foam'
+               }`}
+           >
+             {label}
+@@ -269,7 +271,7 @@ export default function RovViewer3D() {
+         ))}
+       </div>
+ 
+-      <p className="text-[11px] text-cyan-200/85 min-h-[16px]">
++      <p className="min-h-[20px] text-sm text-foam/85">
+         {descriptions[focusPart]}
+       </p>
+     </div>
+diff --git a/src/components/ui/Button.tsx b/src/components/ui/Button.tsx
+new file mode 100644
+index 0000000..ecfe572
+--- /dev/null
++++ b/src/components/ui/Button.tsx
+@@ -0,0 +1,80 @@
++import Link from 'next/link';
++import type { ButtonHTMLAttributes, ReactNode } from 'react';
++
++type Variant = 'primary' | 'ghost';
++type Size = 'md' | 'sm';
++
++const base =
++  'inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60';
++
++const variants: Record<Variant, string> = {
++  primary: 'bg-flare text-abyss hover:bg-flare-deep',
++  ghost: 'border border-line text-foam hover:border-foam',
++};
++
++const sizes: Record<Size, string> = {
++  md: 'px-5 py-3',
++  sm: 'px-4 py-2',
++};
++
++export function buttonClasses(
++  variant: Variant = 'primary',
++  size: Size = 'md',
++  className = '',
++) {
++  return `${base} ${variants[variant]} ${sizes[size]} ${className}`.trim();
++}
++
++interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
++  variant?: Variant;
++  size?: Size;
++}
++
++export function Button({
++  variant = 'primary',
++  size = 'md',
++  className,
++  ...props
++}: ButtonProps) {
++  return <button className={buttonClasses(variant, size, className)} {...props} />;
++}
++
++interface ButtonLinkProps {
++  href: string;
++  children: ReactNode;
++  variant?: Variant;
++  size?: Size;
++  className?: string;
++  onClick?: () => void;
++}
++
++export function ButtonLink({
++  href,
++  children,
++  variant = 'primary',
++  size = 'md',
++  className,
++  onClick,
++}: ButtonLinkProps) {
++  const classes = buttonClasses(variant, size, className);
++
++  if (/^https?:\/\//.test(href)) {
++    return (
++      <a
++        href={href}
++        target="_blank"
++        rel="noopener noreferrer"
++        className={classes}
++        onClick={onClick}
++      >
++        {children}
++      </a>
++    );
++  }
++
++  return (
++    <Link href={href} className={classes} onClick={onClick}>
++      {children}
++    </Link>
++  );
++}
+diff --git a/src/components/ui/Container.tsx b/src/components/ui/Container.tsx
+new file mode 100644
+index 0000000..2bbc38a
+--- /dev/null
++++ b/src/components/ui/Container.tsx
+@@ -0,0 +1,14 @@
++import type { ReactNode } from 'react';
++
++interface ContainerProps {
++  children: ReactNode;
++  className?: string;
++}
++
++export function Container({ children, className = '' }: ContainerProps) {
++  return (
++    <div className={`mx-auto w-full max-w-6xl px-5 sm:px-8 ${className}`}>
++      {children}
++    </div>
++  );
++}
+diff --git a/src/components/ui/ImagePlaceholder.tsx b/src/components/ui/ImagePlaceholder.tsx
+new file mode 100644
+index 0000000..0d92f1f
+--- /dev/null
++++ b/src/components/ui/ImagePlaceholder.tsx
+@@ -0,0 +1,20 @@
++interface ImagePlaceholderProps {
++  label?: string;
++  className?: string;
++}
++
++/** Penanda tempat foto sampai foto asli tersedia. */
++export function ImagePlaceholder({
++  label = 'Foto menyusul',
++  className = 'aspect-[4/3]',
++}: ImagePlaceholderProps) {
++  return (
++    <div
++      role="img"
++      aria-label={label}
++      className={`sonar-lines flex items-end rounded-md border border-line bg-gradient-to-b from-shallows to-midwater p-4 ${className}`}
++    >
++      <span className="text-sm text-mist">{label}</span>
++    </div>
++  );
++}
+diff --git a/src/components/ui/SectionHeading.tsx b/src/components/ui/SectionHeading.tsx
+new file mode 100644
+index 0000000..80139c2
+--- /dev/null
++++ b/src/components/ui/SectionHeading.tsx
+@@ -0,0 +1,26 @@
++import type { ReactNode } from 'react';
++
++interface SectionHeadingProps {
++  title: string;
++  description?: ReactNode;
++  className?: string;
++}
++
++export function SectionHeading({
++  title,
++  description,
++  className = '',
++}: SectionHeadingProps) {
++  return (
++    <div className={className}>
++      <h2 className="font-display text-4xl font-bold italic leading-[0.95] tracking-tight text-foam sm:text-6xl">
++        {title}
++      </h2>
++      {description && (
++        <p className="mt-4 max-w-xl text-base leading-relaxed text-mist">
++          {description}
++        </p>
++      )}
++    </div>
++  );
++}
+diff --git a/src/constants/categories.ts b/src/constants/categories.ts
+new file mode 100644
+index 0000000..2451dfd
+--- /dev/null
++++ b/src/constants/categories.ts
+@@ -0,0 +1,10 @@
++export const ALL_CATEGORY = 'Semua';
++
++export const GALLERY_CATEGORIES = [
++  'KKI 2026',
++  'Progres ROV',
++  'Open Recruitment',
++  'Kegiatan Tim',
++] as const;
++
++export const GALLERY_FILTERS = [ALL_CATEGORY, ...GALLERY_CATEGORIES];
+diff --git a/src/constants/nav-links.ts b/src/constants/nav-links.ts
+new file mode 100644
+index 0000000..9da2573
+--- /dev/null
++++ b/src/constants/nav-links.ts
+@@ -0,0 +1,19 @@
++export interface NavLink {
++  label: string;
++  href: string;
++  children?: { label: string; href: string; hint?: string }[];
++}
++
++export const NAV_LINKS: NavLink[] = [
++  { label: 'About Us', href: '/about-us' },
++  { label: 'ROV', href: '/rov' },
++  {
++    label: 'Activities',
++    href: '/gallery',
++    children: [
++      { label: 'Gallery', href: '/gallery', hint: 'Dokumentasi & recap' },
++      { label: 'Recruitment', href: '/recruitment', hint: 'Gabung bersama kami' },
++    ],
++  },
++  { label: 'Contact', href: '/contact' },
++];
+diff --git a/src/constants/site.ts b/src/constants/site.ts
+new file mode 100644
+index 0000000..2047a85
+--- /dev/null
++++ b/src/constants/site.ts
+@@ -0,0 +1,32 @@
++import type { HeroContent } from '@/types/site-content';
++
++export const SITE = {
++  name: 'SAGARA ITENAS',
++  fullName: 'Sagara Itenas ROV Team',
++  institution: 'Institut Teknologi Nasional Bandung',
++  tagline: 'One Vision, One Journey.',
++  description:
++    'Tim riset dan pengembangan wahana bawah air (Remotely Operated Vehicle) Institut Teknologi Nasional Bandung.',
++  email: 'Sagaraitenas@gmail.com',
++  instagram: {
++    handle: 'sagara_itenas',
++    url: 'https://www.instagram.com/sagara_itenas/',
++  },
++  tiktok: {
++    handle: 'sagaraitenas_team',
++    url: 'https://www.tiktok.com/@sagaraitenas_team',
++  },
++  // TODO: isi dengan link Google Form open recruitment yang aktif.
++  // Selama kosong, tombol pendaftaran diarahkan ke Instagram.
++  recruitmentFormUrl: '',
++} as const;
++
++// TODO: pastikan nama bucket ini sama dengan bucket di Supabase Storage.
++export const STORAGE_BUCKET = 'gallery';
++
++export const DEFAULT_HERO: HeroContent = {
++  title: 'EXPLORE DEEPER.',
++  subtitle: 'SAGARA ITENAS ROV TEAM',
++  description: SITE.description,
++  image_url: null,
++};
+diff --git a/src/hooks/useGalleryPosts.ts b/src/hooks/useGalleryPosts.ts
+new file mode 100644
+index 0000000..a3b575e
+--- /dev/null
++++ b/src/hooks/useGalleryPosts.ts
+@@ -0,0 +1,30 @@
++'use client';
++
++import { useCallback, useEffect, useState } from 'react';
++import { fetchGalleryPosts } from '@/lib/supabase/queries';
++import type { GalleryPost } from '@/types/gallery';
++
++export function useGalleryPosts(limit?: number) {
++  const [posts, setPosts] = useState<GalleryPost[]>([]);
++  const [loading, setLoading] = useState(true);
++  const [reloadKey, setReloadKey] = useState(0);
++
++  useEffect(() => {
++    let active = true;
++    fetchGalleryPosts(limit).then((data) => {
++      if (!active) return;
++      setPosts(data);
++      setLoading(false);
++    });
++    return () => {
++      active = false;
++    };
++  }, [limit, reloadKey]);
++
++  const reload = useCallback(() => {
++    setLoading(true);
++    setReloadKey((key) => key + 1);
++  }, []);
++
++  return { posts, loading, reload };
++}
+diff --git a/src/hooks/useHeroContent.ts b/src/hooks/useHeroContent.ts
+new file mode 100644
+index 0000000..5253858
+--- /dev/null
++++ b/src/hooks/useHeroContent.ts
+@@ -0,0 +1,25 @@
++'use client';
++
++import { useEffect, useState } from 'react';
++import { DEFAULT_HERO } from '@/constants/site';
++import { fetchHeroContent } from '@/lib/supabase/queries';
++import type { HeroContent } from '@/types/site-content';
++
++export function useHeroContent() {
++  const [hero, setHero] = useState<HeroContent>(DEFAULT_HERO);
++  const [loading, setLoading] = useState(true);
++
++  useEffect(() => {
++    let active = true;
++    fetchHeroContent().then((data) => {
++      if (!active) return;
++      setHero(data);
++      setLoading(false);
++    });
++    return () => {
++      active = false;
++    };
++  }, []);
++
++  return { hero, loading };
++}
+diff --git a/src/lib/errors.ts b/src/lib/errors.ts
+new file mode 100644
+index 0000000..c571767
+--- /dev/null
++++ b/src/lib/errors.ts
+@@ -0,0 +1,8 @@
++/** Ambil pesan dari error apa pun, termasuk error Supabase yang bukan instance Error. */
++export function getErrorMessage(error: unknown, fallback: string): string {
++  if (error && typeof error === 'object' && 'message' in error) {
++    const message = (error as { message: unknown }).message;
++    if (typeof message === 'string' && message) return message;
++  }
++  return fallback;
++}
+diff --git a/src/lib/format-date.ts b/src/lib/format-date.ts
+new file mode 100644
+index 0000000..b804b36
+--- /dev/null
++++ b/src/lib/format-date.ts
+@@ -0,0 +1,10 @@
++export function formatDate(value: string): string {
++  const date = new Date(value);
++  if (Number.isNaN(date.getTime())) return '';
++
++  return date.toLocaleDateString('id-ID', {
++    day: 'numeric',
++    month: 'long',
++    year: 'numeric',
++  });
++}
+diff --git a/src/lib/supabase.ts b/src/lib/supabase/client.ts
+similarity index 100%
+rename from src/lib/supabase.ts
+rename to src/lib/supabase/client.ts
+diff --git a/src/lib/supabase/queries.ts b/src/lib/supabase/queries.ts
+new file mode 100644
+index 0000000..29657da
+--- /dev/null
++++ b/src/lib/supabase/queries.ts
+@@ -0,0 +1,74 @@
++import { supabase } from './client';
++import { DEFAULT_HERO, STORAGE_BUCKET } from '@/constants/site';
++import type { GalleryPost, GalleryPostInput } from '@/types/gallery';
++import type { HeroContent } from '@/types/site-content';
++
++/* ---------- Baca (publik) ---------- */
++
++export async function fetchHeroContent(): Promise<HeroContent> {
++  const { data } = await supabase
++    .from('site_content')
++    .select('title, subtitle, description, image_url')
++    .eq('section_key', 'hero')
++    .maybeSingle();
++
++  return data ?? DEFAULT_HERO;
++}
++
++export async function fetchGalleryPosts(limit?: number): Promise<GalleryPost[]> {
++  let query = supabase
++    .from('gallery_posts')
++    .select('*')
++    .order('created_at', { ascending: false });
++
++  if (limit) query = query.limit(limit);
++
++  const { data } = await query;
++  return data ?? [];
++}
++
++/* ---------- Tulis (admin, butuh login + RLS) ---------- */
++
++export async function saveHeroContent(hero: HeroContent): Promise<void> {
++  const { data: existing } = await supabase
++    .from('site_content')
++    .select('section_key')
++    .eq('section_key', 'hero')
++    .maybeSingle();
++
++  const result = existing
++    ? await supabase.from('site_content').update(hero).eq('section_key', 'hero')
++    : await supabase.from('site_content').insert({ section_key: 'hero', ...hero });
++
++  if (result.error) throw result.error;
++}
++
++export async function createGalleryPost(input: GalleryPostInput): Promise<void> {
++  const { error } = await supabase.from('gallery_posts').insert(input);
++  if (error) throw error;
++}
++
++export async function updateGalleryPost(
++  id: string,
++  input: Partial<GalleryPostInput>,
++): Promise<void> {
++  const { error } = await supabase.from('gallery_posts').update(input).eq('id', id);
++  if (error) throw error;
++}
++
++export async function deleteGalleryPost(id: string): Promise<void> {
++  const { error } = await supabase.from('gallery_posts').delete().eq('id', id);
++  if (error) throw error;
++}
++
++export async function uploadGalleryImage(file: File): Promise<string> {
++  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
++  const path = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
++
++  const { error } = await supabase.storage
++    .from(STORAGE_BUCKET)
++    .upload(path, file, { cacheControl: '3600', upsert: false });
++  if (error) throw error;
++
++  return supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
++}
+diff --git a/src/types/gallery.ts b/src/types/gallery.ts
+new file mode 100644
+index 0000000..0e3557b
+--- /dev/null
++++ b/src/types/gallery.ts
+@@ -0,0 +1,17 @@
++export interface GalleryPost {
++  id: string;
++  title: string;
++  category: string;
++  caption: string | null;
++  image_url: string;
++  event_date: string;
++  created_at?: string;
++}
++
++export interface GalleryPostInput {
++  title: string;
++  category: string;
++  caption: string | null;
++  image_url: string;
++  event_date: string;
++}
+diff --git a/src/types/site-content.ts b/src/types/site-content.ts
+new file mode 100644
+index 0000000..16e3c8d
+--- /dev/null
++++ b/src/types/site-content.ts
+@@ -0,0 +1,6 @@
++export interface HeroContent {
++  title: string;
++  subtitle: string | null;
++  description: string | null;
++  image_url: string | null;
++}

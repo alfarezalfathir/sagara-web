@@ -218,7 +218,11 @@ function DetailedProceduralRov({
   );
 }
 
-export default function RovViewer3D() {
+export default function RovViewer3D({
+  heightClass = 'h-72',
+}: {
+  heightClass?: string;
+}) {
   const [focusPart, setFocusPart] = useState<
     'all' | 'frame' | 'thruster' | 'gripper'
   >('all');
@@ -232,10 +236,8 @@ export default function RovViewer3D() {
 
   return (
     <div className="space-y-2.5">
-      <div className="h-64 w-full rounded-2xl border border-cyan-400/25 bg-gradient-to-b from-[#071C30] to-[#030B14] overflow-hidden relative">
+      <div className={`${heightClass} w-full relative`}>
         <Canvas camera={{ position: [2.8, 1.55, 3.25], fov: 40 }} dpr={[1, 2]}>
-          <color attach="background" args={['#040E18']} />
-          <fog attach="fog" args={['#040E18', 6, 14]} />
           <ambientLight intensity={0.75} />
           <directionalLight position={[4, 6, 4]} intensity={1.9} color="#BAE6FD" />
           <pointLight position={[-3, 2, -3]} intensity={1.3} color="#FF5A1F" />
@@ -259,9 +261,9 @@ export default function RovViewer3D() {
             key={key}
             type="button"
             onClick={() => setFocusPart(key)}
-            className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold border transition cursor-pointer ${focusPart === key
-                ? 'bg-[#FF5A1F] text-white border-[#FF5A1F]'
-                : 'bg-[#06131F] text-slate-300 border-slate-800 hover:border-cyan-400/40'
+            className={`rounded-md px-3 py-1.5 text-xs font-semibold border transition-colors cursor-pointer ${focusPart === key
+                ? 'bg-flare text-abyss border-flare'
+                : 'border-line text-foam hover:border-foam'
               }`}
           >
             {label}
@@ -269,7 +271,7 @@ export default function RovViewer3D() {
         ))}
       </div>
 
-      <p className="text-[11px] text-cyan-200/85 min-h-[16px]">
+      <p className="min-h-[20px] text-sm text-foam/85">
         {descriptions[focusPart]}
       </p>
     </div>

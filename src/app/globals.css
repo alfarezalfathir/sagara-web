@@ -1,26 +1,90 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Palet "kolom air": makin turun makin gelap. Oranye hanya untuk aksi. */
+@theme {
+  --color-surface: #14688a;
+  --color-shallows: #0d4a6b;
+  --color-midwater: #08304b;
+  --color-abyss: #04141f;
+  --color-foam: #e8f5f8;
+  --color-mist: #9bbdcc;
+  --color-flare: #ff5a1f;
+  --color-flare-deep: #e04612;
+  --color-line: rgb(232 245 248 / 0.14);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-barlow-condensed), "Arial Narrow", sans-serif;
+  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-abyss);
+  color: var(--color-foam);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-flare);
+  outline-offset: 3px;
+}
+
+/* Sinar cahaya dari permukaan (hero) */
+.light-rays {
+  background: repeating-linear-gradient(
+    104deg,
+    transparent 0 7%,
+    rgb(232 245 248 / 0.08) 7% 9%,
+    transparent 9% 16%
+  );
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+}
+
+/* Gelembung naik: satu-satunya animasi otomatis di situs */
+@keyframes bubble-rise {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateY(-75vh) scale(1.1);
+    opacity: 0;
+  }
+}
+
+.bubble {
+  position: absolute;
+  bottom: -1rem;
+  left: var(--x);
+  width: var(--size);
+  height: var(--size);
+  border-radius: 9999px;
+  border: 1px solid rgb(232 245 248 / 0.45);
+  animation: bubble-rise var(--dur, 12s) linear var(--delay, 0s) infinite;
+}
+
+/* Garis sonar tipis untuk placeholder foto */
+.sonar-lines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0 23px,
+    rgb(232 245 248 / 0.06) 23px 24px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .bubble {
+    animation: none;
+    opacity: 0.25;
+  }
 }
